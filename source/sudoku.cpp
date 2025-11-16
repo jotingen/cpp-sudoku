@@ -1,11 +1,11 @@
 #include <fmt/format.h>
-#include <greeter/greeter.h>
+#include <sudoku/sudoku.h>
 
-using namespace greeter;
+using namespace sudoku;
 
-Greeter::Greeter(std::string _name) : name(std::move(_name)) {}
+Sudoku::Sudoku(std::string _name) : name(std::move(_name)) {}
 
-std::string Greeter::greet(LanguageCode lang) const {
+std::string Sudoku::greet(LanguageCode lang) const {
   switch (lang) {
     default:
     case LanguageCode::EN:
