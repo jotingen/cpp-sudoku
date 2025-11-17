@@ -14,19 +14,21 @@ auto main(int argc, char** argv) -> int {
       {"fr", sudoku::LanguageCode::FR},
   };
 
-  cxxopts::Options options(*argv, "A program to welcome the world!");
+  cxxopts::Options options(*argv, "A Sudoku Solver");
 
-  std::string language;
-  std::string name;
+  std::string filename;
+  std::vector<std::string> sudokus;
 
   // clang-format off
   options.add_options()
     ("h,help", "Show help")
     ("v,version", "Print the current version number")
-    ("n,name", "Name to greet", cxxopts::value(name)->default_value("World"))
-    ("l,lang", "Language code to use", cxxopts::value(language)->default_value("en"))
+    ("f,file", "File of sudokus to solve, one per line", cxxopts::value(filename))
+    ("sudokus", "Sudokus to solve", cxxopts::value(sudokus))
   ;
   // clang-format on
+  options.parse_positional({"sudokus"});
+  options.positional_help("<Sudokus to solve>");
 
   auto result = options.parse(argc, argv);
 
@@ -40,14 +42,9 @@ auto main(int argc, char** argv) -> int {
     return 0;
   }
 
-  auto langIt = languages.find(language);
-  if (langIt == languages.end()) {
-    std::cerr << "unknown language code: " << language << std::endl;
-    return 1;
-  }
-
-  sudoku::Sudoku sudoku(name);
-  std::cout << sudoku.greet(langIt->second) << std::endl;
+  sudoku::Sudoku sudoku(filename);
+  // std::cout << sudoku.greet(langIt->second) << std::endl;
+  std::cout << sudokus[0] << std::endl;
 
   return 0;
 }
