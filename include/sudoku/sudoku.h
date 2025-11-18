@@ -1,31 +1,33 @@
 #pragma once
 
+#include <iostream>
 #include <string>
 
 namespace sudoku {
-
-  /**  Language codes to be used with the Sudoku class */
-  enum class LanguageCode { EN, DE, ES, FR };
 
   /**
    * @brief A class for saying hello in multiple languages
    */
   class Sudoku {
-    std::string name;
+  private:
+    std::string sudoku;
 
   public:
     /**
      * @brief Creates a new sudoku
      * @param name the name to greet
      */
-    Sudoku(std::string name);
+    Sudoku(std::string sudoku);
 
     /**
      * @brief Creates a localized string containing the greeting
      * @param lang the language to greet in
      * @return a string containing the greeting
      */
-    std::string greet(LanguageCode lang = LanguageCode::EN) const;
+    std::string toString() const;
+
+    // Friend function to overload <<
+    friend std::ostream& operator<<(std::ostream& os, const Sudoku& s);
   };
 
 }  // namespace sudoku

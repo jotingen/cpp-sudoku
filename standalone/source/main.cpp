@@ -7,13 +7,6 @@
 #include <unordered_map>
 
 auto main(int argc, char** argv) -> int {
-  const std::unordered_map<std::string, sudoku::LanguageCode> languages{
-      {"en", sudoku::LanguageCode::EN},
-      {"de", sudoku::LanguageCode::DE},
-      {"es", sudoku::LanguageCode::ES},
-      {"fr", sudoku::LanguageCode::FR},
-  };
-
   cxxopts::Options options(*argv, "A Sudoku Solver");
 
   std::string filename;
@@ -42,9 +35,10 @@ auto main(int argc, char** argv) -> int {
     return 0;
   }
 
-  sudoku::Sudoku sudoku(filename);
+  sudoku::Sudoku sudoku(sudokus[0]);
   // std::cout << sudoku.greet(langIt->second) << std::endl;
-  std::cout << sudokus[0] << std::endl;
+  std::cout << sudoku << std::endl;
+  std::cout << sudoku.toString() << std::endl;
 
   return 0;
 }
