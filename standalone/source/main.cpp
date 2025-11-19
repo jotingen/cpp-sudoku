@@ -35,10 +35,15 @@ auto main(int argc, char** argv) -> int {
     return 0;
   }
 
-  sudoku::Sudoku sudoku(sudokus[0]);
-  // std::cout << sudoku.greet(langIt->second) << std::endl;
-  std::cout << sudoku << std::endl;
-  std::cout << sudoku.toString() << std::endl;
+  for (uint i = 0; i < sudokus.size(); i++) {
+    try {
+      sudoku::Sudoku sudoku = sudoku::Sudoku(sudokus[i]);
+      std::cout << sudoku << std::endl;
+      std::cout << sudoku.toString() << std::endl;
+    } catch (const std::invalid_argument& e) {
+      std::cerr << "Error creating Sudoku: " << e.what() << std::endl;
+    }
+  }
 
   return 0;
 }

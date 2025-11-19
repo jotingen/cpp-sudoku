@@ -1,7 +1,9 @@
 #pragma once
 
 #include <iostream>
+#include <optional>
 #include <string>
+// #include <format>
 
 namespace sudoku {
 
@@ -17,7 +19,7 @@ namespace sudoku {
      * @brief Creates a new sudoku
      * @param name the name to greet
      */
-    Sudoku(std::string sudoku);
+    explicit Sudoku(std::string sudoku);
 
     /**
      * @brief Creates a localized string containing the greeting

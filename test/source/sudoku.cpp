@@ -9,10 +9,10 @@ TEST_CASE("Sudoku") {
 
   Sudoku sudoku("Tests");
 
-  //CHECK(sudoku.greet(LanguageCode::EN) == "Hello, Tests!");
-  //CHECK(sudoku.greet(LanguageCode::DE) == "Hallo Tests!");
-  //CHECK(sudoku.greet(LanguageCode::ES) == "¡Hola Tests!");
-  //CHECK(sudoku.greet(LanguageCode::FR) == "Bonjour Tests!");
+  // CHECK(sudoku.greet(LanguageCode::EN) == "Hello, Tests!");
+  // CHECK(sudoku.greet(LanguageCode::DE) == "Hallo Tests!");
+  // CHECK(sudoku.greet(LanguageCode::ES) == "¡Hola Tests!");
+  // CHECK(sudoku.greet(LanguageCode::FR) == "Bonjour Tests!");
 }
 
 TEST_CASE("Sudoku version") {
