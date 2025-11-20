@@ -37,11 +37,14 @@ auto main(int argc, char** argv) -> int {
 
   for (uint i = 0; i < sudokus.size(); i++) {
     try {
-      sudoku::Sudoku sudoku = sudoku::Sudoku(sudokus[i]);
-      std::cout << sudoku << std::endl;
-      std::cout << sudoku.toString() << std::endl;
+      sudoku::Sudoku game = sudoku::Sudoku(sudokus[i]);
+      std::cout << game << std::endl;
+      std::cout << game.toString() << std::endl;
+      std::cout << game.makeMove(0, 0, 0) << std::endl;
+      std::cout << game.toTable() << std::endl;
     } catch (const std::invalid_argument& e) {
-      std::cerr << "Error creating Sudoku: " << e.what() << std::endl;
+      std::cerr << e.what() << std::endl;
+      continue;
     }
   }
 
