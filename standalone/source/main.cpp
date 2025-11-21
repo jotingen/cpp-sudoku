@@ -41,7 +41,16 @@ auto main(int argc, char** argv) -> int {
       std::cout << game << std::endl;
       std::cout << game.toString() << std::endl;
       std::cout << game.makeMove(0, 0, 0) << std::endl;
-      std::cout << game.toTable() << std::endl;
+
+      bool updated = true;
+      int step = 0;
+      while (updated) {
+        std::cout << "Step: " << ++step << std::endl;
+        std::cout << game.toTable();
+        updated = game.solveStep();
+      }
+      std::cout << game.makeMove(0, 0, 0) << std::endl;
+
     } catch (const std::invalid_argument& e) {
       std::cerr << e.what() << std::endl;
       continue;

@@ -42,6 +42,15 @@ namespace sudoku {
      * @return true if valid
      */
     bool makeMove(unsigned int val, unsigned int row, unsigned int col);
+
+    bool solveStep();
+    bool solveRuleLoneStep();
+
+    int convertRCtoI(int row, int col);
+    int getCell(int row, int col);
+    std::array<int, 9> getRow(int row);
+    std::array<int, 9> getCol(int col);
+    std::array<int, 9> getBlock(int row, int col);
   };
 
 }  // namespace sudoku
