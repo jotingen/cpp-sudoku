@@ -13,7 +13,7 @@ namespace sudoku {
    */
   class Sudoku {
   private:
-    std::vector<std::array<int, 81>> state;
+    std::vector<std::array<std::vector<int>, 81>> state;
 
   public:
     /**
@@ -22,12 +22,16 @@ namespace sudoku {
      */
     explicit Sudoku(std::string initial_state_str);
 
+    // Return number of snapshots (steps taken)
+    size_t stepsTaken() const;
+
     /**
      * @brief Creates a table
      * @return a string containing the greeting
      */
     std::string toTable() const;
 
+    std::string toDebug();
     /**
      * @brief Creates a table
      * @return a string containing the greeting
@@ -37,20 +41,16 @@ namespace sudoku {
     // Friend function to overload <<
     friend std::ostream& operator<<(std::ostream& os, const Sudoku& s);
 
-    /**
-     * @brief Takes a move and if legal stores to state and returns true
-     * @return true if valid
-     */
-    bool makeMove(unsigned int val, unsigned int row, unsigned int col);
-
     bool solveStep();
-    bool solveRuleLoneStep();
+    bool solveRuleUniqueRow();
+    bool solveRuleUniqueCol();
+    bool solveRuleUniqueBlock();
 
-    int convertRCtoI(int row, int col);
-    int getCell(int row, int col);
-    std::array<int, 9> getRow(int row);
-    std::array<int, 9> getCol(int col);
-    std::array<int, 9> getBlock(int row, int col);
+    int convertRCtoI(int row, int col) const;
+    std::vector<int>& getCell(int row, int col);
+    std::array<std::reference_wrapper<std::vector<int>>, 9> getRow(int row);
+    std::array<std::reference_wrapper<std::vector<int>>, 9> getCol(int col);
+    std::array<std::reference_wrapper<std::vector<int>>, 9> getBlock(int row, int col);
   };
 
 }  // namespace sudoku

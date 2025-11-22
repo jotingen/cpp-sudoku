@@ -3,6 +3,7 @@
 
 #include <cxxopts.hpp>
 #include <iostream>
+#include <print>
 #include <string>
 #include <unordered_map>
 
@@ -38,18 +39,24 @@ auto main(int argc, char** argv) -> int {
   for (uint i = 0; i < sudokus.size(); i++) {
     try {
       sudoku::Sudoku game = sudoku::Sudoku(sudokus[i]);
-      std::cout << game << std::endl;
+      // std::cout << game << std::endl;
       std::cout << game.toString() << std::endl;
-      std::cout << game.makeMove(0, 0, 0) << std::endl;
+
+      // std::cout << game.toTable() << std::flush;
+
+      // std::cout << game.toDebug() << std::flush;
 
       bool updated = true;
       int step = 0;
       while (updated) {
-        std::cout << "Step: " << ++step << std::endl;
-        std::cout << game.toTable();
+        // while (updated && step < 1) {
+        std::cout << "Step: " << ++step << std::endl << std::flush;
+        std::cout << game.toTable() << std::flush;
+        // std::cout << game.toDebug() << std::flush;
         updated = game.solveStep();
       }
-      std::cout << game.makeMove(0, 0, 0) << std::endl;
+
+      std::println("Steps taken: {}", game.stepsTaken());
 
     } catch (const std::invalid_argument& e) {
       std::cerr << e.what() << std::endl;
