@@ -25,8 +25,13 @@ jobs:
           path: "**/cpm_modules"
           key: ${{ github.workflow }}-cpm-modules-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake') }}
 
+      - name: Install GCC 13
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++-13
+
       - name: configure
-        run: cmake -Sstandalone -Bbuild -DCMAKE_BUILD_TYPE=Debug
+        run: cmake -Sstandalone -Bbuild -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=g++-13 -DCMAKE_CXX_STANDARD=23
 
       - name: build
         run: cmake --build build -j4
