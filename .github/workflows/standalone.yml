@@ -31,7 +31,7 @@ jobs:
           sudo apt-get install -y g++-14 libstdc++-14-dev
 
       - name: configure
-        run: cmake -Sstandalone -Bbuild -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=g++-13 -DCMAKE_CXX_STANDARD=23
+        run: cmake -Sstandalone -Bbuild -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=g++-14 -DCMAKE_CXX_STANDARD=23
 
       - name: build
         run: cmake --build build -j4
