@@ -96,6 +96,17 @@ namespace sudoku {
 
   int Sudoku::convertRCtoI(int row, int col) const { return row * 9 + col; }
 
+  bool Sudoku::solved() const {
+
+    for (int i = 0; i < 81; i++) {
+      if (state.back()[i].size() != 1) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   std::vector<int>& Sudoku::getCell(int row, int col) {
     return state.back()[convertRCtoI(row, col)];
   }

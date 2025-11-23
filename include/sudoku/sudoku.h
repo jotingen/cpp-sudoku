@@ -25,6 +25,8 @@ namespace sudoku {
     // Return number of snapshots (steps taken)
     size_t stepsTaken() const;
 
+    bool solved() const;
+
     /**
      * @brief Creates a table
      * @return a string containing the greeting

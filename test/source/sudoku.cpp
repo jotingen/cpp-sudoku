@@ -4,12 +4,18 @@
 
 #include <string>
 
-TEST_CASE("Sudoku") {
+TEST_CASE("Simple") {
   using namespace sudoku;
 
-  Sudoku sudoku("Tests");
+  Sudoku game("53..7....6..195....98....6.8...6...34..8.3..17...2...6.6....28....419..5....8..79");
 
-  // CHECK(sudoku.greet(LanguageCode::EN) == "Hello, Tests!");
+  bool updated = true;
+  while (updated) {
+    updated = game.solveStep();
+  }
+  std::cout << game.toTable() << std::flush;
+
+  CHECK(game.solved() == true);
   // CHECK(sudoku.greet(LanguageCode::DE) == "Hallo Tests!");
   // CHECK(sudoku.greet(LanguageCode::ES) == "¡Hola Tests!");
   // CHECK(sudoku.greet(LanguageCode::FR) == "Bonjour Tests!");
