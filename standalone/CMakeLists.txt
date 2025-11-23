@@ -26,4 +26,4 @@ add_executable(${PROJECT_NAME} ${sources})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 23 OUTPUT_NAME "Sudoku")
 
-target_link_libraries(${PROJECT_NAME} Sudoku::Sudoku cxxopts)
+target_link_libraries(${PROJECT_NAME} Sudoku::Sudoku cxxopts spdlog::spdlog)

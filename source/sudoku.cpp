@@ -1,4 +1,5 @@
 #include <fmt/format.h>
+#include <spdlog/spdlog.h>
 #include <sudoku/sudoku.h>
 
 #include <algorithm>
@@ -25,6 +26,7 @@ namespace sudoku {
       }
     }
     state.push_back(initial_state);
+    spdlog::debug("Sudoku instance created");
   }
 
   // Return number of snapshots (steps taken)
@@ -97,7 +99,6 @@ namespace sudoku {
   int Sudoku::convertRCtoI(int row, int col) const { return row * 9 + col; }
 
   bool Sudoku::solved() const {
-
     for (int i = 0; i < 81; i++) {
       if (state.back()[i].size() != 1) {
         return false;
@@ -232,7 +233,7 @@ namespace sudoku {
 
     for (Step rule : rules) {
       if ((this->*rule)()) {
-        //std::cout << "Rule:" << rule << std::endl;
+        // std::cout << "Rule:" << rule << std::endl;
         return true;
       }
     }
