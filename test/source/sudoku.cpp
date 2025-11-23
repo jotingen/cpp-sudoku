@@ -10,10 +10,11 @@ TEST_CASE("Simple") {
   Sudoku game("53..7....6..195....98....6.8...6...34..8.3..17...2...6.6....28....419..5....8..79");
 
   bool updated = true;
+  std::cout << "Initial:\n" << game.toTable() << std::endl;
   while (updated) {
     updated = game.solveStep();
   }
-  std::cout << game.toTable() << std::flush;
+  std::cout << "Final:\n" << game.toTable() << std::endl;
 
   CHECK(game.solved() == true);
   // CHECK(sudoku.greet(LanguageCode::DE) == "Hallo Tests!");

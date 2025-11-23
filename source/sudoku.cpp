@@ -232,7 +232,7 @@ namespace sudoku {
 
     for (Step rule : rules) {
       if ((this->*rule)()) {
-        std::cout << "Rule:" << rule << std::endl;
+        //std::cout << "Rule:" << rule << std::endl;
         return true;
       }
     }
