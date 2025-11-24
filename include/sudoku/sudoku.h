@@ -34,6 +34,7 @@ namespace sudoku {
     std::string toTable() const;
 
     std::string toDebug();
+    std::string toDebugTable() const;
     /**
      * @brief Creates a table
      * @return a string containing the greeting

@@ -32,6 +32,21 @@ namespace sudoku {
   // Return number of snapshots (steps taken)
   size_t Sudoku::stepsTaken() const { return state.size(); }
 
+  std::string Sudoku::toString() const {
+    std::string s;
+    s.reserve(81);  // avoid reallocations
+
+    for (int i = 0; i < 81; i++) {
+      if (state.back()[i].size() == 1) {
+        s.push_back(static_cast<char>('0' + state.back()[i][0]));
+      } else {
+        s.push_back('.');
+      }
+    }
+
+    return s;
+  }
+
   std::string Sudoku::toTable() const {
     std::ostringstream out;
 
@@ -58,21 +73,6 @@ namespace sudoku {
     return out.str();  // return the whole table as a string
   }
 
-  std::string Sudoku::toString() const {
-    std::string s;
-    s.reserve(81);  // avoid reallocations
-
-    for (int i = 0; i < 81; i++) {
-      if (state.back()[i].size() == 1) {
-        s.push_back(static_cast<char>('0' + state.back()[i][0]));
-      } else {
-        s.push_back('.');
-      }
-    }
-
-    return s;
-  }
-
   std::string Sudoku::toDebug() {
     std::ostringstream out;
 
@@ -84,6 +84,49 @@ namespace sudoku {
           out << value;
         }
         out << "\n";
+      }
+    }
+
+    return out.str();  // return the whole table as a string
+  }
+
+  std::string Sudoku::toDebugTable() const {
+    std::ostringstream out;
+
+    for (int row = 0; row < 9; row++) {
+      if (row % 3 == 0 && row != 0) {
+        out << "------------+-------------+------------\n";
+        out << "            |             |            \n";
+      }
+
+      for (int colRow = 0; colRow < 3; colRow++) {
+        for (int col = 0; col < 9; col++) {
+          if (col % 3 == 0 && col != 0) {
+            out << "| ";
+          }
+
+          auto cell = state.back()[row * 9 + col];
+          if (std::find(cell.begin(), cell.end(), 3 * colRow + 1) != cell.end()) {
+            out << 3 * colRow + 1;
+          } else {
+            out << ".";
+          }
+          if (std::find(cell.begin(), cell.end(), 3 * colRow + 2) != cell.end()) {
+            out << 3 * colRow + 2;
+          } else {
+            out << ".";
+          }
+          if (std::find(cell.begin(), cell.end(), 3 * colRow + 3) != cell.end()) {
+            out << 3 * colRow + 3;
+          } else {
+            out << ".";
+          }
+          out << " ";
+        }
+        out << "\n";
+        if (colRow == 2 && row != 8) {
+          out << "            |             |            \n";
+        }
       }
     }
 
@@ -135,9 +178,9 @@ namespace sudoku {
   }
 
   bool Sudoku::solveRuleUniqueRow() {
+    spdlog::debug("Checking Row");
     for (int row = 0; row < 9; row++) {
       for (int col = 0; col < 9; col++) {
-        // std::cout << "Processing (" << row << "," << col <<"):"<<std::endl;
         auto& cell = getCell(row, col);
         if (cell.size() > 1) {
           for (auto& value : getRow(row)) {
@@ -145,9 +188,8 @@ namespace sudoku {
             while (i < int(cell.size())) {
               if (value.get().size() == 1 && &cell != &value.get()
                   && value.get().front() == cell.at(i)) {
-                // std::cout << "  UniqRow - Removing " << cell.at(i) << " from (" << row << "," <<
-                // col
-                //           << ")" << std::endl;
+                spdlog::debug("  Checking Row: Removing possible value {} from ({},{})", cell.at(i),
+                              row, col);
                 cell.erase(cell.begin() + i);
                 break;
               }
@@ -155,8 +197,8 @@ namespace sudoku {
             }
           }
           if (cell.size() == 1) {
-            // std::cout << "UniqRow - (" << row << "," << col << "): " << cell.front() <<
-            // std::endl;
+            spdlog::debug("  Checking Row: Solved cell with value {} from ({},{})", cell.front(),
+                          row, col);
             return true;
           }
         }
@@ -166,9 +208,9 @@ namespace sudoku {
   }
 
   bool Sudoku::solveRuleUniqueCol() {
+    spdlog::debug("Checking Column");
     for (int row = 0; row < 9; row++) {
       for (int col = 0; col < 9; col++) {
-        // std::cout << "Processing (" << row << "," << col <<"):"<<std::endl;
         auto& cell = getCell(row, col);
         if (cell.size() > 1) {
           for (auto& value : getCol(col)) {
@@ -176,9 +218,8 @@ namespace sudoku {
             while (i < int(cell.size())) {
               if (value.get().size() == 1 && &cell != &value.get()
                   && value.get().front() == cell.at(i)) {
-                // std::cout << "  UniqCol - Removing " << cell.at(i) << " from (" << row << "," <<
-                // col
-                //           << ")" << std::endl;
+                spdlog::debug("  Checking Column: Removing possible value {} from ({},{})",
+                              cell.at(i), row, col);
                 cell.erase(cell.begin() + i);
                 break;
               }
@@ -186,7 +227,8 @@ namespace sudoku {
             }
           }
           if (cell.size() == 1) {
-            // std::cout << "(" << row << "," << col << "): " << cell.front() << std::endl;
+            spdlog::debug("  Checking Column: Solved cell with value {} from ({},{})", cell.front(),
+                          row, col);
             return true;
           }
         }
@@ -196,6 +238,7 @@ namespace sudoku {
   }
 
   bool Sudoku::solveRuleUniqueBlock() {
+    spdlog::debug("Checking Block");
     for (int row = 0; row < 9; row++) {
       for (int col = 0; col < 9; col++) {
         // std::cout << "Processing (" << row << "," << col <<"):"<<std::endl;
@@ -206,7 +249,8 @@ namespace sudoku {
             while (i < int(cell.size())) {
               if (value.get().size() == 1 && &cell != &value.get()
                   && value.get().front() == cell.at(i)) {
-                // std::cout << "  Removing " << cell.at(i) << std::endl;
+                spdlog::debug("  Checking Block: Removing possible value {} from ({},{})",
+                              cell.at(i), row, col);
                 cell.erase(cell.begin() + i);
                 break;
               }
@@ -214,7 +258,8 @@ namespace sudoku {
             }
           }
           if (cell.size() == 1) {
-            // std::cout << "(" << row << "," << col << "): " << cell.front() << std::endl;
+            spdlog::debug("  Checking Block: Solved cell with value {} from ({},{})", cell.front(),
+                          row, col);
             return true;
           }
         }
