@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <iostream>
+#include <print>
 #include <sstream>
 #include <string>
 
@@ -16,13 +17,16 @@ namespace sudoku {
           fmt::format("Sudoku string was {}, expected 81", initial_state_str.size()));
     }
 
-    std::array<std::vector<int>, 81> initial_state = {};
+    Board initial_state = {};
     std::replace(initial_state_str.begin(), initial_state_str.end(), '.', '0');
-    for (int i = 0; i < 81; i++) {
-      if (initial_state_str[i] == '0') {
-        initial_state[i] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
-      } else {
-        initial_state[i] = {initial_state_str[i] - '0'};  // Convert char to int
+    for (size_t i = 0; i < 9; i++) {
+      for (size_t j = 0; j < 9; j++) {
+        if (initial_state_str[convertRCtoI(i, j)] == '0') {
+          initial_state[i][j] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+        } else {
+          initial_state[i][j]
+              = {initial_state_str[convertRCtoI(i, j)] - '0'};  // Convert char to int
+        }
       }
     }
     state.push_back(initial_state);
@@ -36,11 +40,14 @@ namespace sudoku {
     std::string s;
     s.reserve(81);  // avoid reallocations
 
-    for (int i = 0; i < 81; i++) {
-      if (state.back()[i].size() == 1) {
-        s.push_back(static_cast<char>('0' + state.back()[i][0]));
-      } else {
-        s.push_back('.');
+    for (size_t i = 0; i < 81; i++) {
+      for (size_t j = 0; j < 9; j++) {
+        const auto& cell = state.back()[i][j];
+        if (cell.size() == 1) {
+          s.push_back(static_cast<char>('0' + cell[0]));
+        } else {
+          s.push_back('.');
+        }
       }
     }
 
@@ -50,18 +57,19 @@ namespace sudoku {
   std::string Sudoku::toTable() const {
     std::ostringstream out;
 
-    for (int row = 0; row < 9; row++) {
+    for (size_t row = 0; row < 9; row++) {
       if (row % 3 == 0 && row != 0) {
         out << "------+-------+------\n";  // horizontal separator
       }
 
-      for (int col = 0; col < 9; col++) {
+      for (size_t col = 0; col < 9; col++) {
         if (col % 3 == 0 && col != 0) {
           out << "| ";  // vertical separator
         }
 
-        if (state.back()[row * 9 + col].size() == 1) {
-          int val = state.back()[row * 9 + col][0];
+        const auto& cell = state.back()[row][col];
+        if (cell.size() == 1) {
+          int val = cell[0];
           out << val << " ";
         } else {
           out << ". ";
@@ -76,8 +84,8 @@ namespace sudoku {
   std::string Sudoku::toDebug() {
     std::ostringstream out;
 
-    for (int row = 0; row < 9; row++) {
-      for (int col = 0; col < 9; col++) {
+    for (size_t row = 0; row < 9; row++) {
+      for (size_t col = 0; col < 9; col++) {
         out << " (" << row << "," << col << "): ";
         const auto& cell = getCell(row, col);
         for (int value : cell) {
@@ -93,19 +101,19 @@ namespace sudoku {
   std::string Sudoku::toDebugTable() const {
     std::ostringstream out;
 
-    for (int row = 0; row < 9; row++) {
+    for (size_t row = 0; row < 9; row++) {
       if (row % 3 == 0 && row != 0) {
         out << "------------+-------------+------------\n";
         out << "            |             |            \n";
       }
 
-      for (int colRow = 0; colRow < 3; colRow++) {
-        for (int col = 0; col < 9; col++) {
+      for (size_t colRow = 0; colRow < 3; colRow++) {
+        for (size_t col = 0; col < 9; col++) {
           if (col % 3 == 0 && col != 0) {
             out << "| ";
           }
 
-          auto cell = state.back()[row * 9 + col];
+          const Cell& cell = state.back()[row][col];
           if (std::find(cell.begin(), cell.end(), 3 * colRow + 1) != cell.end()) {
             out << 3 * colRow + 1;
           } else {
@@ -139,67 +147,70 @@ namespace sudoku {
     return os;
   }
 
-  int Sudoku::convertRCtoI(int row, int col) const { return row * 9 + col; }
+  size_t Sudoku::convertRCtoI(size_t row, size_t col) const { return row * 9 + col; }
 
   bool Sudoku::solved() const {
-    for (int i = 0; i < 81; i++) {
-      if (state.back()[i].size() != 1) {
-        return false;
+    for (size_t i = 0; i < 9; i++) {
+      for (size_t j = 0; j < 9; j++) {
+        if (state.back()[i][j].size() != 1) {
+          return false;
+        }
       }
     }
 
     return true;
   }
 
-  std::vector<int>& Sudoku::getCell(int row, int col) {
-    return state.back()[convertRCtoI(row, col)];
+  std::vector<int>& Sudoku::getCell(size_t row, size_t col) { return state.back()[row][col]; }
+  const std::vector<int>& Sudoku::getCell(size_t row, size_t col) const { return state.back()[row][col]; }
+
+  std::vector<IndexedCell> Sudoku::getRow(size_t row) {
+    std::vector<IndexedCell> rowCells = {};
+    for (size_t col = 0; col < 9; ++col) {
+      rowCells.push_back({row, col, state.back()[row][col]});
+    }
+    return rowCells;
   }
 
-  std::array<std::reference_wrapper<std::vector<int>>, 9> Sudoku::getRow(int row) {
-    return {getCell(row, 0), getCell(row, 1), getCell(row, 2), getCell(row, 3), getCell(row, 4),
-            getCell(row, 5), getCell(row, 6), getCell(row, 7), getCell(row, 8)};
+  std::vector<IndexedCell> Sudoku::getCol(size_t col) {
+    std::vector<IndexedCell> colCells = {};
+    for (size_t row = 0; row < 9; ++row) {
+      colCells.push_back({row, col, state.back()[row][col]});
+    }
+    return colCells;
   }
 
-  std::array<std::reference_wrapper<std::vector<int>>, 9> Sudoku::getCol(int col) {
-    return {getCell(0, col), getCell(1, col), getCell(2, col), getCell(3, col), getCell(4, col),
-            getCell(5, col), getCell(6, col), getCell(7, col), getCell(8, col)};
+  std::vector<IndexedCell> Sudoku::getBlock(size_t row, size_t col) {
+    std::vector<IndexedCell> blockCells = {};
+    size_t r0 = (row / 3) * 3;
+    size_t c0 = (col / 3) * 3;
+    for (size_t dr = 0; dr < 3; ++dr) {
+      for (size_t dc = 0; dc < 3; ++dc) {
+        blockCells.push_back({r0 + dr, c0 + dc, state.back()[r0 + dr][c0 + dc]});
+      }
+    }
+    return blockCells;
   }
 
-  std::array<std::reference_wrapper<std::vector<int>>, 9> Sudoku::getBlock(int row, int col) {
-    return {getCell((row / 3) * 3 + 0, (col / 3) * 3 + 0),
-            getCell((row / 3) * 3 + 0, (col / 3) * 3 + 1),
-            getCell((row / 3) * 3 + 0, (col / 3) * 3 + 2),
-            getCell((row / 3) * 3 + 1, (col / 3) * 3 + 0),
-            getCell((row / 3) * 3 + 1, (col / 3) * 3 + 1),
-            getCell((row / 3) * 3 + 1, (col / 3) * 3 + 2),
-            getCell((row / 3) * 3 + 2, (col / 3) * 3 + 0),
-            getCell((row / 3) * 3 + 2, (col / 3) * 3 + 1),
-            getCell((row / 3) * 3 + 2, (col / 3) * 3 + 2)};
-  }
-
-  bool Sudoku::solveRuleUniqueRow() {
-    spdlog::debug("Checking Row");
-    for (int row = 0; row < 9; row++) {
-      for (int col = 0; col < 9; col++) {
-        auto& cell = getCell(row, col);
-        if (cell.size() > 1) {
-          for (auto& value : getRow(row)) {
-            int i = 0;
-            while (i < int(cell.size())) {
-              if (value.get().size() == 1 && &cell != &value.get()
-                  && value.get().front() == cell.at(i)) {
-                spdlog::debug("  Checking Row: Removing possible value {} from ({},{})", cell.at(i),
+  bool Sudoku::solveRulePencilingCell(size_t row, size_t col, Cell& cell) {
+    if (cell.size() > 1) {
+      std::vector<std::vector<IndexedCell>> groups = {getRow(row), getCol(col), getBlock(row, col)};
+      for (auto group : groups) {
+        for (IndexedCell groupCell : group) {
+          int valueNdx = 0;
+          while (valueNdx < int(cell.size())) {
+            if (groupCell.cell.size() == 1 && !(groupCell.row == row && groupCell.col == col)
+                && groupCell.cell.front() == cell.at(valueNdx)) {
+              spdlog::debug("  Penciling: Removing possible value {} from ({},{})",
+                            cell.at(valueNdx), row, col);
+              cell.erase(cell.begin() + valueNdx);
+              if (cell.size() == 1) {
+                spdlog::debug("  Penciling: Solved cell with value {} from ({},{})", cell.front(),
                               row, col);
-                cell.erase(cell.begin() + i);
-                break;
               }
-              i++;
+              return true;
             }
-          }
-          if (cell.size() == 1) {
-            spdlog::debug("  Checking Row: Solved cell with value {} from ({},{})", cell.front(),
-                          row, col);
-            return true;
+            valueNdx++;
           }
         }
       }
@@ -207,60 +218,87 @@ namespace sudoku {
     return false;
   }
 
-  bool Sudoku::solveRuleUniqueCol() {
-    spdlog::debug("Checking Column");
-    for (int row = 0; row < 9; row++) {
-      for (int col = 0; col < 9; col++) {
-        auto& cell = getCell(row, col);
-        if (cell.size() > 1) {
-          for (auto& value : getCol(col)) {
-            int i = 0;
-            while (i < int(cell.size())) {
-              if (value.get().size() == 1 && &cell != &value.get()
-                  && value.get().front() == cell.at(i)) {
-                spdlog::debug("  Checking Column: Removing possible value {} from ({},{})",
-                              cell.at(i), row, col);
-                cell.erase(cell.begin() + i);
-                break;
-              }
-              i++;
-            }
-          }
-          if (cell.size() == 1) {
-            spdlog::debug("  Checking Column: Solved cell with value {} from ({},{})", cell.front(),
-                          row, col);
-            return true;
-          }
+  bool Sudoku::solveRulePenciling() {
+    for (size_t row = 0; row < 9; row++) {
+      for (size_t col = 0; col < 9; col++) {
+        bool cellUpdated = solveRulePencilingCell(row, col, getCell(row, col));
+        if (cellUpdated) {
+          return true;
         }
       }
     }
     return false;
   }
 
-  bool Sudoku::solveRuleUniqueBlock() {
-    spdlog::debug("Checking Block");
-    for (int row = 0; row < 9; row++) {
-      for (int col = 0; col < 9; col++) {
-        // std::cout << "Processing (" << row << "," << col <<"):"<<std::endl;
-        auto& cell = getCell(row, col);
-        if (cell.size() > 1) {
-          for (auto& value : getBlock(row, col)) {
-            int i = 0;
-            while (i < int(cell.size())) {
-              if (value.get().size() == 1 && &cell != &value.get()
-                  && value.get().front() == cell.at(i)) {
-                spdlog::debug("  Checking Block: Removing possible value {} from ({},{})",
-                              cell.at(i), row, col);
-                cell.erase(cell.begin() + i);
-                break;
+  bool Sudoku::solveRuleHiddenPairs() {
+    spdlog::debug("\n{}", toDebugTable());
+    for (size_t row = 0; row < 9; row++) {
+      for (size_t col = 0; col < 9; col++) {
+        Cell& cell = getCell(row, col);
+        if (cell.size() > 2) {
+          for (size_t i = 0; i < cell.size(); ++i) {
+            for (size_t j = i + 1; j < cell.size(); ++j) {
+              std::array<int, 2> pair = {cell[i], cell[j]};
+              std::sort(pair.begin(), pair.end());
+              // spdlog::debug("Found pair ({},{}) in ({},{})", pair[0], pair[1], row, col);
+
+              std::vector<std::vector<IndexedCell>> groups
+                  = {getRow(row), getCol(col), getBlock(row, col)};
+              for (auto group : groups) {
+                for (auto groupCell : group) {
+                  spdlog::debug(" {}-{} groupCell ({},{})", row, col, groupCell.row, groupCell.col);
+                  if (row != groupCell.row && col != groupCell.col) {
+                    for (size_t gi = 0; gi < groupCell.cell.size(); ++gi) {
+                      for (size_t gj = gi + 1; gj < groupCell.cell.size(); ++gj) {
+                        std::array<int, 2> groupCellPair = {groupCell.cell[gi], groupCell.cell[gj]};
+                        std::sort(groupCellPair.begin(), groupCellPair.end());
+                        // spdlog::debug("Found group pair ({},{}) in ({},{})", groupCellPair[0],
+                        //               groupCellPair[1], groupCell.row, groupCell.col);
+                        if (pair == groupCellPair) {
+                          // spdlog::debug("Match Found");
+                          //  Check if the two pairs appear in only 2 cells
+                          std::array<int, 2> pairCount = {0, 0};
+                          for (auto groupCheckCell : group) {
+                            spdlog::debug(" {}-{} groupCheckCell ({},{})", row, col,
+                                          groupCheckCell.row, groupCheckCell.col);
+                            // First
+                            if (std::find(groupCheckCell.cell.begin(), groupCheckCell.cell.end(),
+                                          groupCellPair[0])
+                                != groupCheckCell.cell.end()) {
+                              pairCount[0]++;
+                              spdlog::debug("Match found {} in ({},{})", groupCellPair[0],
+                                            groupCheckCell.row, groupCheckCell.col);
+                            }
+                            // Second
+                            if (std::find(groupCheckCell.cell.begin(), groupCheckCell.cell.end(),
+                                          groupCellPair[1])
+                                != groupCheckCell.cell.end()) {
+                              pairCount[1]++;
+                              spdlog::debug("Match found {} in ({},{})", groupCellPair[1],
+                                            groupCheckCell.row, groupCheckCell.col);
+                            }
+                          }
+                          spdlog::debug("PairCount ({},{})", pairCount[0], pairCount[1]);
+                          if (pairCount[0] == 2 && pairCount[1] == 2) {
+                            cell.clear();
+                            cell.push_back(groupCellPair[0]);
+                            cell.push_back(groupCellPair[1]);
+                            groupCell.cell.clear();
+                            groupCell.cell.push_back(groupCellPair[0]);
+                            groupCell.cell.push_back(groupCellPair[1]);
+                            spdlog::debug("Hidden Pair Updated ({},{}) and ({},{}) to [{},{}]", row,
+                                          col, groupCell.row, groupCell.col, groupCellPair[0],
+                                          groupCellPair[1]);
+                            spdlog::debug("\n{}", toDebugTable());
+                            return true;
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
               }
-              i++;
             }
-          }
-          if (cell.size() == 1) {
-            spdlog::debug("  Checking Block: Solved cell with value {} from ({},{})", cell.front(),
-                          row, col);
-            return true;
           }
         }
       }
@@ -271,8 +309,7 @@ namespace sudoku {
   bool Sudoku::solveStep() {
     using Step = bool (Sudoku::*)();
 
-    std::vector<Step> rules
-        = {&Sudoku::solveRuleUniqueRow, &Sudoku::solveRuleUniqueCol, &Sudoku::solveRuleUniqueBlock};
+    std::vector<Step> rules = {&Sudoku::solveRulePenciling, &Sudoku::solveRuleHiddenPairs};
 
     state.push_back(state.back());
 

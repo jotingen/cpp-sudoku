@@ -8,12 +8,44 @@
 
 namespace sudoku {
 
+  using Cell = std::vector<int>;
+
+  using Board = std::array<std::array<Cell, 9>, 9>;
+
+  struct IndexedCell {
+    size_t row;
+    size_t col;
+    Cell& cell;
+    IndexedCell(size_t r, size_t c, Cell& cref) : row(r), col(c), cell(cref) {}
+  };
+
   /**
    * @brief A class for saying hello in multiple languages
    */
   class Sudoku {
   private:
-    std::vector<std::array<std::vector<int>, 81>> state;
+    std::vector<Board> state;
+
+    bool solveRulePenciling();
+    bool solveRulePencilingCell(size_t row, size_t col, Cell& cell);
+
+    bool solveRulePointing();
+
+    bool solveRuleHiddenPairs();
+
+    bool solveRuleHiddenTriples();
+
+    bool solveRuleNakedPairs();
+
+    bool solveRuleNakedTriples();
+
+    size_t convertRCtoI(size_t row, size_t col) const;
+
+    Cell& getCell(size_t row, size_t col);
+    const Cell& getCell(size_t row, size_t col) const;
+    std::vector<IndexedCell> getRow(size_t row);
+    std::vector<IndexedCell> getCol(size_t col);
+    std::vector<IndexedCell> getBlock(size_t row, size_t col);
 
   public:
     /**
@@ -45,15 +77,6 @@ namespace sudoku {
     friend std::ostream& operator<<(std::ostream& os, const Sudoku& s);
 
     bool solveStep();
-    bool solveRuleUniqueRow();
-    bool solveRuleUniqueCol();
-    bool solveRuleUniqueBlock();
-
-    int convertRCtoI(int row, int col) const;
-    std::vector<int>& getCell(int row, int col);
-    std::array<std::reference_wrapper<std::vector<int>>, 9> getRow(int row);
-    std::array<std::reference_wrapper<std::vector<int>>, 9> getCol(int col);
-    std::array<std::reference_wrapper<std::vector<int>>, 9> getBlock(int row, int col);
   };
 
 }  // namespace sudoku
