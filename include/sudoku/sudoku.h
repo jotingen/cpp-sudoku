@@ -26,23 +26,23 @@ namespace sudoku {
   private:
     std::vector<Board> state;
 
-    bool solveRulePenciling();
-    bool solveRulePencilingCell(size_t row, size_t col, Cell& cell);
+    auto solveRulePenciling() -> bool;
+    auto solveRulePencilingCell(size_t row, size_t col, Cell& cell) -> bool;
 
-    bool solveRulePointing();
+    auto solveRulePointing() -> bool;
 
-    bool solveRuleHiddenPairs();
+    auto solveRuleHiddenPairs() -> bool;
 
-    bool solveRuleHiddenTriples();
+    auto solveRuleHiddenTriples() -> bool;
 
-    bool solveRuleNakedPairs();
+    auto solveRuleNakedPairs() -> bool;
 
-    bool solveRuleNakedTriples();
+    auto solveRuleNakedTriples() -> bool;
 
-    static size_t convertRCtoI(size_t row, size_t col);
+    static auto convertRCtoI(size_t row, size_t col) -> size_t;
 
-    Cell& getCell(size_t row, size_t col);
-    const Cell& getCell(size_t row, size_t col) const;
+    auto getCell(size_t row, size_t col) -> Cell&;
+    auto getCell(size_t row, size_t col) const -> const Cell&;
     auto getRow(size_t row) -> std::vector<IndexedCell>;
     auto getCol(size_t col) -> std::vector<IndexedCell>;
     auto getBlock(size_t row, size_t col) -> std::vector<IndexedCell>;
@@ -57,7 +57,7 @@ namespace sudoku {
     // Return number of snapshots (steps taken)
     auto stepsTaken() const -> size_t;
 
-    bool solved() const;
+    auto solved() const -> bool;
 
     /**
      * @brief Creates a table
