@@ -11,18 +11,21 @@
 
 namespace sudoku {
 
+  const size_t ROWS = 9;
+  const size_t COLS = 9;
+
   Sudoku::Sudoku(std::string initial_state_str) {
-    if (initial_state_str.size() != 81) {
+    if (initial_state_str.size() != ROWS * COLS) {
       throw std::invalid_argument(
-          fmt::format("Sudoku string was {}, expected 81", initial_state_str.size()));
+          fmt::format("Sudoku string was {}, expected {}", initial_state_str.size(), ROWS * COLS));
     }
 
     Board initial_state = {};
-    std::replace(initial_state_str.begin(), initial_state_str.end(), '.', '0');
-    for (size_t i = 0; i < 9; i++) {
-      for (size_t j = 0; j < 9; j++) {
+    std::ranges::replace(initial_state_str, '.', '0');
+    for (size_t i = 0; i < ROWS; i++) {
+      for (size_t j = 0; j < COLS; j++) {
         if (initial_state_str[convertRCtoI(i, j)] == '0') {
-          initial_state[i][j] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+          initial_state[i][j] = {1, 2, 3, 4, 5, 6, 7, 8, 9};  // NOLINT(readability-magic-numbers)
         } else {
           initial_state[i][j]
               = {initial_state_str[convertRCtoI(i, j)] - '0'};  // Convert char to int
@@ -34,14 +37,14 @@ namespace sudoku {
   }
 
   // Return number of snapshots (steps taken)
-  size_t Sudoku::stepsTaken() const { return state.size(); }
+  auto Sudoku::stepsTaken() const -> size_t { return state.size(); }
 
-  std::string Sudoku::toString() const {
+  auto Sudoku::toString() const -> std::string {
     std::string s;
-    s.reserve(81);  // avoid reallocations
+    s.reserve(ROWS * COLS);  // avoid reallocations
 
-    for (size_t i = 0; i < 81; i++) {
-      for (size_t j = 0; j < 9; j++) {
+    for (size_t i = 0; i < ROWS * COLS; i++) {
+      for (size_t j = 0; j < COLS; j++) {
         const auto& cell = state.back()[i][j];
         if (cell.size() == 1) {
           s.push_back(static_cast<char>('0' + cell[0]));
@@ -54,15 +57,15 @@ namespace sudoku {
     return s;
   }
 
-  std::string Sudoku::toTable() const {
+  auto Sudoku::toTable() const -> std::string {
     std::ostringstream out;
 
-    for (size_t row = 0; row < 9; row++) {
+    for (size_t row = 0; row < ROWS; row++) {
       if (row % 3 == 0 && row != 0) {
         out << "------+-------+------\n";  // horizontal separator
       }
 
-      for (size_t col = 0; col < 9; col++) {
+      for (size_t col = 0; col < COLS; col++) {
         if (col % 3 == 0 && col != 0) {
           out << "| ";  // vertical separator
         }
@@ -81,11 +84,11 @@ namespace sudoku {
     return out.str();  // return the whole table as a string
   }
 
-  std::string Sudoku::toDebug() {
+  auto Sudoku::toDebug() -> std::string {
     std::ostringstream out;
 
-    for (size_t row = 0; row < 9; row++) {
-      for (size_t col = 0; col < 9; col++) {
+    for (size_t row = 0; row < ROWS; row++) {
+      for (size_t col = 0; col < COLS; col++) {
         out << " (" << row << "," << col << "): ";
         const auto& cell = getCell(row, col);
         for (int value : cell) {
@@ -98,17 +101,17 @@ namespace sudoku {
     return out.str();  // return the whole table as a string
   }
 
-  std::string Sudoku::toDebugTable() const {
+  auto Sudoku::toDebugTable() const -> std::string {
     std::ostringstream out;
 
-    for (size_t row = 0; row < 9; row++) {
+    for (size_t row = 0; row < ROWS; row++) {
       if (row % 3 == 0 && row != 0) {
         out << "------------+-------------+------------\n";
         out << "            |             |            \n";
       }
 
       for (size_t colRow = 0; colRow < 3; colRow++) {
-        for (size_t col = 0; col < 9; col++) {
+        for (size_t col = 0; col < COLS; col++) {
           if (col % 3 == 0 && col != 0) {
             out << "| ";
           }
@@ -147,11 +150,11 @@ namespace sudoku {
     return os;
   }
 
-  size_t Sudoku::convertRCtoI(size_t row, size_t col) const { return row * 9 + col; }
+  size_t Sudoku::convertRCtoI(size_t row, size_t col) { return row * COLS + col; }
 
   bool Sudoku::solved() const {
-    for (size_t i = 0; i < 9; i++) {
-      for (size_t j = 0; j < 9; j++) {
+    for (size_t i = 0; i < ROWS; i++) {
+      for (size_t j = 0; j < COLS; j++) {
         if (state.back()[i][j].size() != 1) {
           return false;
         }
@@ -162,25 +165,27 @@ namespace sudoku {
   }
 
   std::vector<int>& Sudoku::getCell(size_t row, size_t col) { return state.back()[row][col]; }
-  const std::vector<int>& Sudoku::getCell(size_t row, size_t col) const { return state.back()[row][col]; }
+  const std::vector<int>& Sudoku::getCell(size_t row, size_t col) const {
+    return state.back()[row][col];
+  }
 
-  std::vector<IndexedCell> Sudoku::getRow(size_t row) {
+  auto Sudoku::getRow(size_t row) -> std::vector<IndexedCell> {
     std::vector<IndexedCell> rowCells = {};
-    for (size_t col = 0; col < 9; ++col) {
+    for (size_t col = 0; col < COLS; ++col) {
       rowCells.push_back({row, col, state.back()[row][col]});
     }
     return rowCells;
   }
 
-  std::vector<IndexedCell> Sudoku::getCol(size_t col) {
+  auto Sudoku::getCol(size_t col) -> std::vector<IndexedCell> {
     std::vector<IndexedCell> colCells = {};
-    for (size_t row = 0; row < 9; ++row) {
+    for (size_t row = 0; row < ROWS; ++row) {
       colCells.push_back({row, col, state.back()[row][col]});
     }
     return colCells;
   }
 
-  std::vector<IndexedCell> Sudoku::getBlock(size_t row, size_t col) {
+  auto Sudoku::getBlock(size_t row, size_t col) -> std::vector<IndexedCell> {
     std::vector<IndexedCell> blockCells = {};
     size_t r0 = (row / 3) * 3;
     size_t c0 = (col / 3) * 3;
@@ -195,8 +200,8 @@ namespace sudoku {
   bool Sudoku::solveRulePencilingCell(size_t row, size_t col, Cell& cell) {
     if (cell.size() > 1) {
       std::vector<std::vector<IndexedCell>> groups = {getRow(row), getCol(col), getBlock(row, col)};
-      for (auto group : groups) {
-        for (IndexedCell groupCell : group) {
+      for (const auto& group : groups) {
+        for (const IndexedCell& groupCell : group) {
           int valueNdx = 0;
           while (valueNdx < int(cell.size())) {
             if (groupCell.cell.size() == 1 && !(groupCell.row == row && groupCell.col == col)
@@ -219,8 +224,8 @@ namespace sudoku {
   }
 
   bool Sudoku::solveRulePenciling() {
-    for (size_t row = 0; row < 9; row++) {
-      for (size_t col = 0; col < 9; col++) {
+    for (size_t row = 0; row < ROWS; row++) {
+      for (size_t col = 0; col < COLS; col++) {
         bool cellUpdated = solveRulePencilingCell(row, col, getCell(row, col));
         if (cellUpdated) {
           return true;
@@ -232,8 +237,8 @@ namespace sudoku {
 
   bool Sudoku::solveRuleHiddenPairs() {
     spdlog::debug("\n{}", toDebugTable());
-    for (size_t row = 0; row < 9; row++) {
-      for (size_t col = 0; col < 9; col++) {
+    for (size_t row = 0; row < ROWS; row++) {
+      for (size_t col = 0; col < COLS; col++) {
         Cell& cell = getCell(row, col);
         if (cell.size() > 2) {
           for (size_t i = 0; i < cell.size(); ++i) {
@@ -313,13 +318,8 @@ namespace sudoku {
 
     state.push_back(state.back());
 
-    for (Step rule : rules) {
-      if ((this->*rule)()) {
-        // std::cout << "Rule:" << rule << std::endl;
-        return true;
-      }
-    }
-    return false;
+    return std::any_of(rules.begin(), rules.end(),
+                       [this](const Step& rule) { return (this->*rule)(); });
   }
 
 }  // namespace sudoku

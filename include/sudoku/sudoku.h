@@ -39,13 +39,13 @@ namespace sudoku {
 
     bool solveRuleNakedTriples();
 
-    size_t convertRCtoI(size_t row, size_t col) const;
+    static size_t convertRCtoI(size_t row, size_t col);
 
     Cell& getCell(size_t row, size_t col);
     const Cell& getCell(size_t row, size_t col) const;
-    std::vector<IndexedCell> getRow(size_t row);
-    std::vector<IndexedCell> getCol(size_t col);
-    std::vector<IndexedCell> getBlock(size_t row, size_t col);
+    auto getRow(size_t row) -> std::vector<IndexedCell>;
+    auto getCol(size_t col) -> std::vector<IndexedCell>;
+    auto getBlock(size_t row, size_t col) -> std::vector<IndexedCell>;
 
   public:
     /**
@@ -55,7 +55,7 @@ namespace sudoku {
     explicit Sudoku(std::string initial_state_str);
 
     // Return number of snapshots (steps taken)
-    size_t stepsTaken() const;
+    auto stepsTaken() const -> size_t;
 
     bool solved() const;
 
@@ -63,15 +63,15 @@ namespace sudoku {
      * @brief Creates a table
      * @return a string containing the greeting
      */
-    std::string toTable() const;
+    auto toTable() const -> std::string;
 
-    std::string toDebug();
-    std::string toDebugTable() const;
+    auto toDebug() -> std::string;
+    auto toDebugTable() const -> std::string;
     /**
      * @brief Creates a table
      * @return a string containing the greeting
      */
-    std::string toString() const;
+    auto toString() const -> std::string;
 
     // Friend function to overload <<
     friend std::ostream& operator<<(std::ostream& os, const Sudoku& s);
