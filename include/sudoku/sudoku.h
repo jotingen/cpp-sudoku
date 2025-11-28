@@ -28,7 +28,11 @@ namespace sudoku {
 
     auto solveRulePenciling() -> bool;
     auto solveRulePencilingCell(size_t row, size_t col, Cell& cell) -> bool;
+    auto solveRulePencilingCellWithGroup(size_t row, size_t col, Cell& cell,
+                                         const std::vector<IndexedCell>& group) -> bool;
 
+    auto solveRulePointingGroups(const std::vector<IndexedCell> group0,
+                                 const std::vector<IndexedCell> group1) -> bool;
     auto solveRulePointing() -> bool;
 
     auto solveRuleHiddenPairs() -> bool;
