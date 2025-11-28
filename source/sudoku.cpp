@@ -6,9 +6,12 @@
 #include <array>
 #include <iostream>
 #include <print>
+#include <ranges>
 #include <set>
 #include <sstream>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace sudoku {
 
@@ -105,6 +108,7 @@ namespace sudoku {
   auto Sudoku::toDebugTable() const -> std::string {
     std::ostringstream out;
 
+    out << toTable();
     for (size_t row = 0; row < ROWS; row++) {
       if (row % 3 == 0 && row != 0) {
         out << "------------+-------------+------------\n";
@@ -170,24 +174,24 @@ namespace sudoku {
     return state.back()[row][col];
   }
 
-  auto Sudoku::getRow(size_t row) -> std::vector<IndexedCell> {
-    std::vector<IndexedCell> rowCells = {};
+  auto Sudoku::getRow(size_t row) -> IndexedCellGroup {
+    IndexedCellGroup rowCells = {};
     for (size_t col = 0; col < COLS; ++col) {
       rowCells.emplace_back(row, col, state.back()[row][col]);
     }
     return rowCells;
   }
 
-  auto Sudoku::getCol(size_t col) -> std::vector<IndexedCell> {
-    std::vector<IndexedCell> colCells = {};
+  auto Sudoku::getCol(size_t col) -> IndexedCellGroup {
+    IndexedCellGroup colCells = {};
     for (size_t row = 0; row < ROWS; ++row) {
       colCells.emplace_back(row, col, state.back()[row][col]);
     }
     return colCells;
   }
 
-  auto Sudoku::getBlock(size_t row, size_t col) -> std::vector<IndexedCell> {
-    std::vector<IndexedCell> blockCells = {};
+  auto Sudoku::getBlock(size_t row, size_t col) -> IndexedCellGroup {
+    IndexedCellGroup blockCells = {};
     size_t r0 = (row / 3) * 3;
     size_t c0 = (col / 3) * 3;
     for (size_t dr = 0; dr < 3; ++dr) {
@@ -199,17 +203,17 @@ namespace sudoku {
   }
 
   auto Sudoku::solveRulePencilingCellWithGroup(size_t row, size_t col, Cell& cell,
-                                               const std::vector<IndexedCell>& group) -> bool {
+                                               const IndexedCellGroup& group) -> bool {
     for (const IndexedCell& groupCell : group) {
       int valueNdx = 0;
       while (valueNdx < int(cell.size())) {
         if (groupCell.cell.size() == 1 && (groupCell.row != row || groupCell.col != col)
             && groupCell.cell.front() == cell.at(valueNdx)) {
-          spdlog::debug("  Penciling: Removing possible value {} from ({},{})", cell.at(valueNdx),
+          spdlog::debug("Penciling: Removing possible value {} from ({},{})", cell.at(valueNdx),
                         row, col);
           cell.erase(cell.begin() + valueNdx);
           if (cell.size() == 1) {
-            spdlog::debug("  Penciling: Solved cell with value {} from ({},{})", cell.front(), row,
+            spdlog::debug("Penciling: Solved cell with value {} from ({},{})", cell.front(), row,
                           col);
           }
           return true;
@@ -222,7 +226,7 @@ namespace sudoku {
 
   auto Sudoku::solveRulePencilingCell(size_t row, size_t col, Cell& cell) -> bool {
     if (cell.size() > 1) {
-      std::vector<std::vector<IndexedCell>> groups = {getRow(row), getCol(col), getBlock(row, col)};
+      std::vector<IndexedCellGroup> groups = {getRow(row), getCol(col), getBlock(row, col)};
       for (const auto& group : groups) {
         bool cellUpdated = solveRulePencilingCellWithGroup(row, col, getCell(row, col), group);
         if (cellUpdated) {
@@ -234,20 +238,31 @@ namespace sudoku {
   }
 
   auto Sudoku::solveRulePenciling() -> bool {
-    for (size_t row = 0; row < ROWS; row++) {
-      for (size_t col = 0; col < COLS; col++) {
-        bool cellUpdated = solveRulePencilingCell(row, col, getCell(row, col));
-        if (cellUpdated) {
-          return true;
+    bool updatedLoop;
+    bool updated = false;
+    do {
+      updatedLoop = false;
+      for (size_t row = 0; row < ROWS; row++) {
+        for (size_t col = 0; col < COLS; col++) {
+          bool cellUpdated = solveRulePencilingCell(row, col, getCell(row, col));
+          if (cellUpdated) {
+            updated = true;
+            updatedLoop = true;
+          }
         }
       }
+    } while (updatedLoop);
+    if (updated) {
+      spdlog::debug("\n{}", toDebugTable());
+      return true;
     }
+
     return false;
   }
 
-  auto Sudoku::solveRulePointingGroups(const std::vector<IndexedCell> group0,
-                                       const std::vector<IndexedCell> group1) -> bool {
-    std::vector<IndexedCell> sharedCells;
+  auto Sudoku::solveRulePointingGroups(const IndexedCellGroup group0, const IndexedCellGroup group1)
+      -> bool {
+    IndexedCellGroup sharedCells;
     std::set<int> sharedValues;
     for (const auto& g0Cell : group0) {
       for (const auto& g1Cell : group1) {
@@ -266,9 +281,9 @@ namespace sudoku {
         }
       }
     }
-    // spdlog::debug("  Found {} shared cells", sharedCells.size());
+    spdlog::trace("  Found {} shared cells", sharedCells.size());
 
-    std::vector<IndexedCell> unsharedGroup0Cells;
+    IndexedCellGroup unsharedGroup0Cells;
     for (const auto& g0Cell : group0) {
       bool isShared = false;
       for (const auto& sharedCell : sharedCells) {
@@ -280,9 +295,9 @@ namespace sudoku {
         unsharedGroup0Cells.push_back(g0Cell);
       }
     }
-    // spdlog::debug("  Found {} unshared group0 cells", unsharedGroup0Cells.size());
+    spdlog::trace("  Found {} unshared group0 cells", unsharedGroup0Cells.size());
 
-    std::vector<IndexedCell> unsharedGroup1Cells;
+    IndexedCellGroup unsharedGroup1Cells;
     for (const auto& g1Cell : group1) {
       bool isShared = false;
       for (const auto& sharedCell : sharedCells) {
@@ -294,20 +309,21 @@ namespace sudoku {
         unsharedGroup1Cells.push_back(g1Cell);
       }
     }
-    // spdlog::debug("  Found {} unshared group1 cells", unsharedGroup1Cells.size());
+    spdlog::trace("  Found {} unshared group1 cells", unsharedGroup1Cells.size());
 
-    spdlog::debug("  Found {} shared values", sharedValues.size());
+    spdlog::trace("  Found {} shared values", sharedValues.size());
+    bool updated = false;
     if (sharedValues.size() > 0) {
       for (auto sharedValue : sharedValues) {
         bool valueFoundOutsideOfSharedGroup0 = false;
         bool valueFoundOutsideOfSharedGroup1 = false;
-        // spdlog::debug("    {}", sharedValue);
+        spdlog::trace("    {}", sharedValue);
         //  check if in unshared group0 cells
         for (const auto& unsharedGroup0Cell : unsharedGroup0Cells) {
           if (std::ranges::find(unsharedGroup0Cell.cell, sharedValue)
               != unsharedGroup0Cell.cell.end()) {
             valueFoundOutsideOfSharedGroup0 = true;
-            // spdlog::debug("    {} found outside of shared cells in group0", sharedValue);
+            spdlog::trace("    {} found outside of shared cells in group0", sharedValue);
             break;
           }
         }
@@ -316,36 +332,43 @@ namespace sudoku {
           if (std::ranges::find(unsharedGroup1Cell.cell, sharedValue)
               != unsharedGroup1Cell.cell.end()) {
             valueFoundOutsideOfSharedGroup1 = true;
-            // spdlog::debug("    {} found outside of shared cells in group1", sharedValue);
+            spdlog::trace("    {} found outside of shared cells in group1", sharedValue);
             break;
           }
         }
         if (valueFoundOutsideOfSharedGroup0 && !valueFoundOutsideOfSharedGroup1) {
-          // spdlog::debug("\n{}", toDebugTable());
-          spdlog::debug("    {} only in found in unshared cells in group0", sharedValue);
+          spdlog::trace("\n{}", toDebugTable());
+          spdlog::trace("    {} only in found in unshared cells in group0", sharedValue);
           for (const auto& unsharedGroup0Cell : unsharedGroup0Cells) {
-            // spdlog::debug("      Removing possible value {} from ({},{})", sharedValue,
-            //               unsharedGroup0Cell.row, unsharedGroup0Cell.col);
+            spdlog::debug("Pointing: Removing possible value {} from ({},{})", sharedValue,
+                          unsharedGroup0Cell.row, unsharedGroup0Cell.col);
             unsharedGroup0Cell.cell.erase(
                 std::ranges::remove(unsharedGroup0Cell.cell, sharedValue).begin(),
                 unsharedGroup0Cell.cell.end());
           }
+          updated = true;
         } else if (!valueFoundOutsideOfSharedGroup0 && valueFoundOutsideOfSharedGroup1) {
-          // spdlog::debug("\n{}", toDebugTable());
-          spdlog::debug("    {} only in found in unshared cells in group1", sharedValue);
+          spdlog::trace("\n{}", toDebugTable());
+          spdlog::trace("    {} only in found in unshared cells in group1", sharedValue);
           for (const auto& unsharedGroup1Cell : unsharedGroup1Cells) {
-            // spdlog::debug("      Removing possible value {} from ({},{})", sharedValue,
-            //               unsharedGroup1Cell.row, unsharedGroup1Cell.col);
+            spdlog::debug("Pointing: Removing possible value {} from ({},{})", sharedValue,
+                          unsharedGroup1Cell.row, unsharedGroup1Cell.col);
             unsharedGroup1Cell.cell.erase(
                 std::ranges::remove(unsharedGroup1Cell.cell, sharedValue).begin(),
                 unsharedGroup1Cell.cell.end());
           }
+          updated = true;
         } else if (valueFoundOutsideOfSharedGroup0 && valueFoundOutsideOfSharedGroup1) {
-          spdlog::debug("    {} found in unshared cells in both groups", sharedValue);
+          spdlog::trace("   {} found in unshared cells in both groups", sharedValue);
         } else {
-          spdlog::debug("    {} not found in unshared cells in either group", sharedValue);
+          spdlog::trace("   {} not found in unshared cells in either group", sharedValue);
         }
       }
+    }
+
+    if (updated) {
+      spdlog::debug("\n{}", toDebugTable());
+      return true;
     }
 
     return false;
@@ -354,7 +377,7 @@ namespace sudoku {
   auto Sudoku::solveRulePointing() -> bool {
     for (size_t row = 0; row < ROWS; row++) {
       for (size_t col = 0; col < COLS; col += 3) {
-        spdlog::debug("Pointing - Row - ({},{})", row, col);
+        spdlog::trace("Pointing - Row - ({},{})", row, col);
         if (solveRulePointingGroups(getRow(row), getBlock(row, col))) {
           return true;
         }
@@ -362,7 +385,7 @@ namespace sudoku {
     }
     for (size_t col = 0; col < COLS; col++) {
       for (size_t row = 0; row < ROWS; row += 3) {
-        spdlog::debug("Pointing - Col - ({},{})", row, col);
+        spdlog::trace("Pointing - Col - ({},{})", row, col);
         if (solveRulePointingGroups(getCol(col), getBlock(row, col))) {
           return true;
         }
@@ -371,74 +394,180 @@ namespace sudoku {
     return false;
   }
 
-  auto Sudoku::solveRuleHiddenPairs() -> bool {
-    spdlog::debug("\n{}", toDebugTable());
-    for (size_t row = 0; row < ROWS; row++) {
-      for (size_t col = 0; col < COLS; col++) {
-        Cell& cell = getCell(row, col);
-        if (cell.size() > 2) {
-          for (size_t i = 0; i < cell.size(); ++i) {
-            for (size_t j = i + 1; j < cell.size(); ++j) {
-              std::array<int, 2> pair = {cell[i], cell[j]};
-              std::ranges::sort(pair);
-              // spdlog::debug("Found pair ({},{}) in ({},{})", pair[0], pair[1], row, col);
+  std::vector<std::pair<int, int>> makeCandidatePairs(const std::set<int>& candidates) {
+    std::vector<int> vals(candidates.begin(), candidates.end());
 
-              std::vector<std::vector<IndexedCell>> groups
-                  = {getRow(row), getCol(col), getBlock(row, col)};
-              for (const auto& group : groups) {
-                for (const auto& groupCell : group) {
-                  spdlog::debug(" {}-{} groupCell ({},{})", row, col, groupCell.row, groupCell.col);
-                  if (row != groupCell.row && col != groupCell.col) {
-                    for (size_t gi = 0; gi < groupCell.cell.size(); ++gi) {
-                      for (size_t gj = gi + 1; gj < groupCell.cell.size(); ++gj) {
-                        std::array<int, 2> groupCellPair = {groupCell.cell[gi], groupCell.cell[gj]};
-                        std::ranges::sort(groupCellPair);
-                        // spdlog::debug("Found group pair ({},{}) in ({},{})", groupCellPair[0],
-                        //               groupCellPair[1], groupCell.row, groupCell.col);
-                        if (pair == groupCellPair) {
-                          // spdlog::debug("Match Found");
-                          //  Check if the two pairs appear in only 2 cells
-                          std::array<int, 2> pairCount = {0, 0};
-                          for (auto groupCheckCell : group) {
-                            spdlog::debug(" {}-{} groupCheckCell ({},{})", row, col,
-                                          groupCheckCell.row, groupCheckCell.col);
-                            // First
-                            if (std::ranges::find(groupCheckCell.cell, groupCellPair[0])
-                                != groupCheckCell.cell.end()) {
-                              pairCount[0]++;
-                              spdlog::debug("Match found {} in ({},{})", groupCellPair[0],
-                                            groupCheckCell.row, groupCheckCell.col);
-                            }
-                            // Second
-                            if (std::ranges::find(groupCheckCell.cell, groupCellPair[1])
-                                != groupCheckCell.cell.end()) {
-                              pairCount[1]++;
-                              spdlog::debug("Match found {} in ({},{})", groupCellPair[1],
-                                            groupCheckCell.row, groupCheckCell.col);
-                            }
-                          }
-                          spdlog::debug("PairCount ({},{})", pairCount[0], pairCount[1]);
-                          if (pairCount[0] == 2 && pairCount[1] == 2) {
-                            cell.clear();
-                            cell.push_back(groupCellPair[0]);
-                            cell.push_back(groupCellPair[1]);
-                            groupCell.cell.clear();
-                            groupCell.cell.push_back(groupCellPair[0]);
-                            groupCell.cell.push_back(groupCellPair[1]);
-                            spdlog::debug("Hidden Pair Updated ({},{}) and ({},{}) to [{},{}]", row,
-                                          col, groupCell.row, groupCell.col, groupCellPair[0],
-                                          groupCellPair[1]);
-                            spdlog::debug("\n{}", toDebugTable());
-                            return true;
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
+    auto indices = std::views::iota(0, (int)vals.size());
+
+    std::vector<std::pair<int, int>> result;
+    for (int i : indices) {
+      for (int j : std::views::iota(i + 1, (int)vals.size())) {
+        result.emplace_back(vals[i], vals[j]);
+      }
+    }
+    return result;
+  }
+
+  std::vector<std::tuple<int, int, int>> makeCandidateTuples(const std::set<int>& candidates) {
+    std::vector<int> vals(candidates.begin(), candidates.end());
+
+    std::vector<std::tuple<int, int, int>> result;
+    for (size_t i = 0; i < vals.size(); ++i) {
+      for (size_t j = i + 1; j < vals.size(); ++j) {
+        for (size_t k = j + 1; k < vals.size(); ++k) {
+          result.emplace_back(vals[i], vals[j], vals[k]);
+        }
+      }
+    }
+
+    return result;
+  }
+
+  auto Sudoku::solveRuleHiddenPairsGroup(IndexedCellGroup cellGroup) -> bool {
+    spdlog::trace("solveRuleHiddenPairsGroup");
+
+    // Get all candidates in group and generate pairs
+    std::set<int> candidates;
+    for (const auto& cell : cellGroup) {
+      if (cell.cell.size() > 1) {
+        for (auto candidate : cell.cell) {
+          candidates.insert(candidate);
+        }
+      }
+    }
+
+    // Pair up candidates and check if only two cells have them as a pair
+    for (auto [a, b] : makeCandidatePairs(candidates)) {
+      spdlog::trace("  Candidate pair: ({}, {})", a, b);
+      bool invalidated = false;
+      IndexedCellGroup candidateCells = {};
+      for (const auto& cell : cellGroup) {
+        bool cellContainsFirstValue = std::ranges::find(cell.cell, a) != cell.cell.end();
+        bool cellContainsSecondValue = std::ranges::find(cell.cell, b) != cell.cell.end();
+        if (cellContainsFirstValue && cellContainsSecondValue) {
+          candidateCells.push_back(cell);
+        } else if (cellContainsFirstValue || cellContainsSecondValue) {
+          invalidated = true;
+          break;
+        }
+      }
+      if (invalidated) {
+        continue;
+      }
+      // Check if there are only two candidates
+      // and only process if a cell has mroe then 2 candidates
+      if (candidateCells.size() == 2
+          && (candidateCells[0].cell.size() > 2 || candidateCells[1].cell.size() > 2)) {
+        spdlog::debug("Hidden Pairs: Found {} and {} paired in cells ({},{}) and ({},{})", a, b,
+                      candidateCells[0].row, candidateCells[0].col, candidateCells[1].row,
+                      candidateCells[1].col);
+        for (const auto& candidateCell : candidateCells) {
+          candidateCell.cell.erase(
+              std::remove_if(candidateCell.cell.begin(), candidateCell.cell.end(),
+                             [=](int x) { return x != a && x != b; }),
+              candidateCell.cell.end());
+        }
+        spdlog::debug("\n{}", toDebugTable());
+        return true;
+      }
+    }
+    return false;
+  }
+
+  auto Sudoku::solveRuleHiddenPairs() -> bool {
+    spdlog::trace("solveRuleHiddenPairs");
+    for (size_t row = 0; row < ROWS; row++) {
+      if (solveRuleHiddenPairsGroup(getRow(row))) {
+        return true;
+      }
+    }
+    for (size_t col = 0; col < COLS; col++) {
+      if (solveRuleHiddenPairsGroup(getCol(col))) {
+        return true;
+      }
+    }
+    for (size_t row = 0; row < ROWS; row += 3) {
+      for (size_t col = 0; col < COLS; col += 3) {
+        if (solveRuleHiddenPairsGroup(getBlock(row, col))) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  auto Sudoku::solveRuleHiddenTuplesGroup(IndexedCellGroup cellGroup) -> bool {
+    spdlog::trace("solveRuleHiddenTuplesGroup");
+
+    // Get all candidates in group and generate tuples
+    std::set<int> candidates;
+    for (const auto& cell : cellGroup) {
+      if (cell.cell.size() > 1) {
+        for (auto candidate : cell.cell) {
+          candidates.insert(candidate);
+        }
+      }
+    }
+
+    // Tuple up candidates and check if only three cells have them
+    for (auto [a, b, c] : makeCandidateTuples(candidates)) {
+      spdlog::trace("  Candidate tuple: ({}, {}, {})", a, b, c);
+      bool invalidated = false;
+      IndexedCellGroup candidateCells = {};
+      for (const auto& cell : cellGroup) {
+        bool cellContainsFirstValue = std::ranges::find(cell.cell, a) != cell.cell.end();
+        bool cellContainsSecondValue = std::ranges::find(cell.cell, b) != cell.cell.end();
+        bool cellContainsThirdValue = std::ranges::find(cell.cell, c) != cell.cell.end();
+        if ((cellContainsFirstValue && cellContainsSecondValue)
+            || (cellContainsFirstValue && cellContainsThirdValue)
+            || (cellContainsSecondValue && cellContainsThirdValue)) {
+          candidateCells.push_back(cell);
+        } else if (cellContainsFirstValue || cellContainsSecondValue || cellContainsThirdValue) {
+          invalidated = true;
+          break;
+        }
+      }
+      if (invalidated) {
+        continue;
+      }
+      // Check if there are only three candidates
+      // and only process if a cell has more then 3 candidates
+      if (candidateCells.size() == 3
+          && (candidateCells[0].cell.size() > 3 || candidateCells[1].cell.size() > 3
+              || candidateCells[2].cell.size() > 3)) {
+        spdlog::debug(
+            "Hidden Tuples: Found {}, {}, and {} paired in cells ({},{}), ({},{}) and ({},{})", a,
+            b, c, candidateCells[0].row, candidateCells[0].col, candidateCells[1].row,
+            candidateCells[1].col, candidateCells[2].row, candidateCells[2].col);
+        for (const auto& candidateCell : candidateCells) {
+          candidateCell.cell.erase(
+              std::remove_if(candidateCell.cell.begin(), candidateCell.cell.end(),
+                             [=](int x) { return x != a && x != b && x != c; }),
+              candidateCell.cell.end());
+        }
+        spdlog::debug("\n{}", toDebugTable());
+        return true;
+      }
+    }
+    return false;
+  }
+
+  auto Sudoku::solveRuleHiddenTuples() -> bool {
+    spdlog::trace("solveRuleHiddenTuples");
+    for (size_t row = 0; row < ROWS; row++) {
+      if (solveRuleHiddenTuplesGroup(getRow(row))) {
+        return true;
+      }
+    }
+    for (size_t col = 0; col < COLS; col++) {
+      if (solveRuleHiddenTuplesGroup(getCol(col))) {
+        return true;
+      }
+    }
+    for (size_t row = 0; row < ROWS; row += 3) {
+      for (size_t col = 0; col < COLS; col += 3) {
+        if (solveRuleHiddenTuplesGroup(getBlock(row, col))) {
+          return true;
         }
       }
     }
@@ -446,10 +575,11 @@ namespace sudoku {
   }
 
   auto Sudoku::solveStep() -> bool {
+    spdlog::trace("SolveStep");
     using Step = bool (Sudoku::*)();
 
-    std::vector<Step> rules
-        = {&Sudoku::solveRulePenciling, &Sudoku::solveRulePointing, &Sudoku::solveRuleHiddenPairs};
+    std::vector<Step> rules = {&Sudoku::solveRulePenciling, &Sudoku::solveRulePointing,
+                               &Sudoku::solveRuleHiddenPairs, &Sudoku::solveRuleHiddenTuples};
 
     state.push_back(state.back());
 

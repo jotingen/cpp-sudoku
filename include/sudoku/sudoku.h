@@ -9,6 +9,7 @@
 namespace sudoku {
 
   using Cell = std::vector<int>;
+  using CellGroup = std::vector<Cell>;
 
   using Board = std::array<std::array<Cell, 9>, 9>;
 
@@ -18,6 +19,7 @@ namespace sudoku {
     Cell& cell;
     IndexedCell(size_t r, size_t c, Cell& cref) : row(r), col(c), cell(cref) {}
   };
+  using IndexedCellGroup = std::vector<IndexedCell>;
 
   /**
    * @brief A class for saying hello in multiple languages
@@ -29,15 +31,17 @@ namespace sudoku {
     auto solveRulePenciling() -> bool;
     auto solveRulePencilingCell(size_t row, size_t col, Cell& cell) -> bool;
     auto solveRulePencilingCellWithGroup(size_t row, size_t col, Cell& cell,
-                                         const std::vector<IndexedCell>& group) -> bool;
+                                         const IndexedCellGroup& group) -> bool;
 
-    auto solveRulePointingGroups(const std::vector<IndexedCell> group0,
-                                 const std::vector<IndexedCell> group1) -> bool;
+    auto solveRulePointingGroups(const IndexedCellGroup group0, const IndexedCellGroup group1)
+        -> bool;
     auto solveRulePointing() -> bool;
 
+    auto solveRuleHiddenPairsGroup(IndexedCellGroup cellGroup) -> bool;
     auto solveRuleHiddenPairs() -> bool;
 
-    auto solveRuleHiddenTriples() -> bool;
+    auto solveRuleHiddenTuplesGroup(IndexedCellGroup cellGroup) -> bool;
+    auto solveRuleHiddenTuples() -> bool;
 
     auto solveRuleNakedPairs() -> bool;
 
@@ -47,9 +51,9 @@ namespace sudoku {
 
     auto getCell(size_t row, size_t col) -> Cell&;
     auto getCell(size_t row, size_t col) const -> const Cell&;
-    auto getRow(size_t row) -> std::vector<IndexedCell>;
-    auto getCol(size_t col) -> std::vector<IndexedCell>;
-    auto getBlock(size_t row, size_t col) -> std::vector<IndexedCell>;
+    auto getRow(size_t row) -> IndexedCellGroup;
+    auto getCol(size_t col) -> IndexedCellGroup;
+    auto getBlock(size_t row, size_t col) -> IndexedCellGroup;
 
   public:
     /**
