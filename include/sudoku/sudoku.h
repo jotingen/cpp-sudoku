@@ -47,6 +47,9 @@ namespace sudoku {
 
     auto solveRuleNakedTriples() -> bool;
 
+    auto solveRuleXWingCells(size_t row0, size_t row1, size_t col0, size_t col1) -> bool;
+    auto solveRuleXWing() -> bool;
+
     static auto convertRCtoI(size_t row, size_t col) -> size_t;
 
     auto getCell(size_t row, size_t col) -> Cell&;

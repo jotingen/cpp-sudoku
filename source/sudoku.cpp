@@ -574,12 +574,142 @@ namespace sudoku {
     return false;
   }
 
+  auto Sudoku::solveRuleXWingCells(size_t row0, size_t row1, size_t col0, size_t col1) -> bool {
+    CellGroup candidateCells
+        = {getCell(row0, col0), getCell(row0, col1), getCell(row1, col0), getCell(row1, col1)};
+    // Get all candidates in group
+    std::set<int> candidates;
+    for (const auto& cell : candidateCells) {
+      if (cell.size() == 1) {
+        return false;
+      }
+      for (auto candidate : cell) {
+        candidates.insert(candidate);
+      }
+    }
+
+    for (auto candidate : candidates) {
+      if (std::find(candidateCells[0].begin(), candidateCells[0].end(), candidate)
+              != candidateCells[0].end()
+          && std::find(candidateCells[1].begin(), candidateCells[1].end(), candidate)
+                 != candidateCells[1].end()
+          && std::find(candidateCells[2].begin(), candidateCells[2].end(), candidate)
+                 != candidateCells[2].end()
+          && std::find(candidateCells[3].begin(), candidateCells[3].end(), candidate)
+                 != candidateCells[3].end()) {
+        spdlog::trace("{} shared amoungst ({},{}) ({},{}), ({},{}), ({},{})", candidate, row0, col0,
+                      row0, col1, row1, col0, row1, col1);
+        bool unique;
+        bool others;
+
+        // Check rows
+        unique = true;
+        others = false;
+        // Check that other cells in row dont contain candidate
+        for (auto row : {getRow(row0), getRow(row1)}) {
+          for (auto cell : row) {
+            if (std::find(cell.cell.begin(), cell.cell.end(), candidate) != cell.cell.end()
+                && cell.col != col0 && cell.col != col1) {
+              unique = false;
+            }
+          }
+        }
+        // Check that other cells in rows contain candidate
+        for (auto col : {getCol(col0), getCol(col1)}) {
+          for (auto cell : col) {
+            if (std::find(cell.cell.begin(), cell.cell.end(), candidate) != cell.cell.end()
+                && cell.row != row0 && cell.row != row1) {
+              others = true;
+            }
+          }
+        }
+        if (unique && others) {
+          spdlog::debug("\n{}", toDebugTable());
+          spdlog::debug("{} is unique across rows for ({},{}) ({},{}), ({},{}), ({},{})", candidate,
+                        row0, col0, row0, col1, row1, col0, row1, col1);
+          for (auto col : {getCol(col0), getCol(col1)}) {
+            for (auto cell : col) {
+              if (std::find(cell.cell.begin(), cell.cell.end(), candidate) != cell.cell.end()
+                  && cell.row != row0 && cell.row != row1) {
+                cell.cell.erase(std::remove_if(cell.cell.begin(), cell.cell.end(),
+                                               [=](int x) { return x == candidate; }),
+                                cell.cell.end());
+              }
+            }
+          }
+          spdlog::debug("\n{}", toDebugTable());
+          return true;
+        }
+
+        // Check columns
+        unique = true;
+        others = false;
+        // Check that other cells in column dont contain candidate
+        for (auto col : {getCol(col0), getCol(col1)}) {
+          for (auto cell : col) {
+            if (std::find(cell.cell.begin(), cell.cell.end(), candidate) != cell.cell.end()
+                && cell.row != row0 && cell.row != row1) {
+              unique = false;
+            }
+          }
+        }
+        // Check that other cells in row dont contain candidate
+        for (auto row : {getRow(row0), getRow(row1)}) {
+          for (auto cell : row) {
+            if (std::find(cell.cell.begin(), cell.cell.end(), candidate) != cell.cell.end()
+                && cell.col != col0 && cell.col != col1) {
+              others = true;
+            }
+          }
+        }
+        if (unique && others) {
+          spdlog::debug("\n{}", toDebugTable());
+          spdlog::debug("{} is unique across cols for ({},{}) ({},{}), ({},{}), ({},{})", candidate,
+                        row0, col0, row0, col1, row1, col0, row1, col1);
+          for (auto row : {getRow(row0), getRow(row1)}) {
+            for (auto cell : row) {
+              if (std::find(cell.cell.begin(), cell.cell.end(), candidate) != cell.cell.end()
+                  && cell.col != col0 && cell.col != col1) {
+                cell.cell.erase(std::remove_if(cell.cell.begin(), cell.cell.end(),
+                                               [=](int x) { return x == candidate; }),
+                                cell.cell.end());
+              }
+            }
+          }
+          spdlog::debug("\n{}", toDebugTable());
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  auto Sudoku::solveRuleXWing() -> bool {
+    spdlog::trace("solveRuleXWing");
+    for (size_t row0 = 0; row0 < ROWS; row0++) {
+      for (size_t col0 = 0; col0 < COLS; col0++) {
+        for (size_t row1 = row0 + 1; row1 < ROWS; row1++) {
+          for (size_t col1 = col0 + 1; col1 < COLS; col1++) {
+            if (row0 / 3 != row1 / 3 || col0 / 3 != col1 / 3) {
+              if (solveRuleXWingCells(row0, row1, col0, col1)) {
+                return true;
+              }
+            }
+          }
+        }
+      }
+    }
+    return false;
+  }
+
   auto Sudoku::solveStep() -> bool {
     spdlog::trace("SolveStep");
     using Step = bool (Sudoku::*)();
 
-    std::vector<Step> rules = {&Sudoku::solveRulePenciling, &Sudoku::solveRulePointing,
-                               &Sudoku::solveRuleHiddenPairs, &Sudoku::solveRuleHiddenTuples};
+    std::vector<Step> rules
+        = {&Sudoku::solveRulePenciling, &Sudoku::solveRulePointing, &Sudoku::solveRuleHiddenPairs,
+           &Sudoku::solveRuleHiddenTuples, &Sudoku::solveRuleXWing};
 
     state.push_back(state.back());
 
