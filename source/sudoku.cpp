@@ -15,9 +15,6 @@
 
 namespace sudoku {
 
-  const size_t ROWS = 9;
-  const size_t COLS = 9;
-
   Sudoku::Sudoku(std::string initial_state_str) {
     if (initial_state_str.size() != ROWS * COLS) {
       throw std::invalid_argument(
@@ -28,11 +25,9 @@ namespace sudoku {
     std::ranges::replace(initial_state_str, '.', '0');
     for (size_t i = 0; i < ROWS; i++) {
       for (size_t j = 0; j < COLS; j++) {
-        if (initial_state_str[convertRCtoI(i, j)] == '0') {
-          initial_state[i][j] = {1, 2, 3, 4, 5, 6, 7, 8, 9};  // NOLINT(readability-magic-numbers)
-        } else {
-          initial_state[i][j]
-              = {initial_state_str[convertRCtoI(i, j)] - '0'};  // Convert char to int
+        int value = initial_state_str[convertRCtoI(i, j)] - '0';
+        if (value != 0) {
+          initial_state.getCell(i, j).keepOnly(value);
         }
       }
     }
@@ -49,9 +44,9 @@ namespace sudoku {
 
     for (size_t i = 0; i < ROWS * COLS; i++) {
       for (size_t j = 0; j < COLS; j++) {
-        const auto& cell = state.back()[i][j];
-        if (cell.size() == 1) {
-          s.push_back(static_cast<char>('0' + cell[0]));
+        const auto& cell = state.back().getCell(i, j);
+        if (cell.candidateCount() == 1) {
+          s.push_back(static_cast<char>('0' + cell.toVector()[0]));
         } else {
           s.push_back('.');
         }
@@ -74,9 +69,9 @@ namespace sudoku {
           out << "| ";  // vertical separator
         }
 
-        const auto& cell = state.back()[row][col];
-        if (cell.size() == 1) {
-          int val = cell[0];
+        const auto& cell = state.back().getCell(row, col);
+        if (cell.candidateCount() == 1) {
+          int val = cell.toVector()[0];
           out << val << " ";
         } else {
           out << ". ";
@@ -95,7 +90,7 @@ namespace sudoku {
       for (size_t col = 0; col < COLS; col++) {
         out << " (" << row << "," << col << "): ";
         const auto& cell = getCell(row, col);
-        for (int value : cell) {
+        for (int value : cell.toVector()) {
           out << value;
         }
         out << "\n";
@@ -121,18 +116,18 @@ namespace sudoku {
             out << "| ";
           }
 
-          const Cell& cell = state.back()[row][col];
-          if (std::ranges::find(cell, (3 * colRow) + 1) != cell.end()) {
+          const Cell& cell = state.back().getCell(row, col);
+          if (cell.hasCandidate((3 * colRow) + 1)) {
             out << (3 * colRow) + 1;
           } else {
             out << ".";
           }
-          if (std::ranges::find(cell, (3 * colRow) + 2) != cell.end()) {
+          if (cell.hasCandidate((3 * colRow) + 2)) {
             out << (3 * colRow) + 2;
           } else {
             out << ".";
           }
-          if (std::ranges::find(cell, (3 * colRow) + 3) != cell.end()) {
+          if (cell.hasCandidate((3 * colRow) + 3)) {
             out << (3 * colRow) + 3;
           } else {
             out << ".";
@@ -160,7 +155,7 @@ namespace sudoku {
   auto Sudoku::solved() const -> bool {
     for (size_t i = 0; i < ROWS; i++) {
       for (size_t j = 0; j < COLS; j++) {
-        if (state.back()[i][j].size() != 1) {
+        if (state.back().getCell(i, j).candidateCount() != 1) {
           return false;
         }
       }
@@ -169,67 +164,50 @@ namespace sudoku {
     return true;
   }
 
-  auto Sudoku::getCell(size_t row, size_t col) -> Cell& { return state.back()[row][col]; }
+  auto Sudoku::getCell(size_t row, size_t col) -> Cell& { return state.back().getCell(row, col); }
   auto Sudoku::getCell(size_t row, size_t col) const -> const Cell& {
-    return state.back()[row][col];
+    return state.back().getCell(row, col);
   }
 
-  auto Sudoku::getRow(size_t row) -> IndexedCellGroup {
-    IndexedCellGroup rowCells = {};
-    for (size_t col = 0; col < COLS; ++col) {
-      rowCells.emplace_back(row, col, state.back()[row][col]);
-    }
-    return rowCells;
+  auto Sudoku::getRow(size_t row) -> Group {
+    return state.back().getRow(row);
   }
 
-  auto Sudoku::getCol(size_t col) -> IndexedCellGroup {
-    IndexedCellGroup colCells = {};
-    for (size_t row = 0; row < ROWS; ++row) {
-      colCells.emplace_back(row, col, state.back()[row][col]);
-    }
-    return colCells;
+  auto Sudoku::getCol(size_t col) -> Group {
+    return state.back().getCol(col);
   }
 
-  auto Sudoku::getBlock(size_t row, size_t col) -> IndexedCellGroup {
-    IndexedCellGroup blockCells = {};
-    size_t r0 = (row / 3) * 3;
-    size_t c0 = (col / 3) * 3;
-    for (size_t dr = 0; dr < 3; ++dr) {
-      for (size_t dc = 0; dc < 3; ++dc) {
-        blockCells.emplace_back(r0 + dr, c0 + dc, state.back()[r0 + dr][c0 + dc]);
-      }
-    }
-    return blockCells;
+  auto Sudoku::getBlock(size_t row, size_t col) -> Group {
+    return state.back().getBlock(row,col);
   }
 
-  auto Sudoku::solveRulePencilingCellWithGroup(size_t row, size_t col, Cell& cell,
-                                               const IndexedCellGroup& group) -> bool {
-    for (const IndexedCell& groupCell : group) {
-      int valueNdx = 0;
-      while (valueNdx < int(cell.size())) {
-        if (groupCell.cell.size() == 1 && (groupCell.row != row || groupCell.col != col)
-            && groupCell.cell.front() == cell.at(valueNdx)) {
-          spdlog::debug("Penciling: Removing possible value {} from ({},{})", cell.at(valueNdx),
-                        row, col);
-          cell.erase(cell.begin() + valueNdx);
-          if (cell.size() == 1) {
-            spdlog::debug("Penciling: Solved cell with value {} from ({},{})", cell.front(), row,
-                          col);
+  auto Sudoku::solveRulePencilingCellWithGroup(Cell& cell, const Group& group) -> bool {
+    for (const Cell& groupCell : group) {
+      for (auto candidate : cell.toVector()) {
+        if (groupCell.candidateCount() == 1
+            && (groupCell.row != cell.row || groupCell.col != cell.col)
+            && groupCell.hasCandidate(candidate)
+            && cell.hasCandidate(candidate)) {
+          spdlog::debug("Penciling: Removing possible value {} from ({},{})", candidate, cell.row,
+                        cell.col);
+          cell.removeCandidate(candidate);
+          if (cell.candidateCount() == 1) {
+            spdlog::debug("Penciling: Solved cell with value {} from ({},{})", cell.toVector().front(), cell.row,
+                          cell.col);
           }
           return true;
         }
-        valueNdx++;
       }
     }
     return false;
   }
 
-  auto Sudoku::solveRulePencilingCell(size_t row, size_t col, Cell& cell) -> bool {
-    if (cell.size() > 1) {
-      std::vector<IndexedCellGroup> groups = {getRow(row), getCol(col), getBlock(row, col)};
+  auto Sudoku::solveRulePencilingCell(Cell& cell) -> bool {
+    if (cell.candidateCount() > 1) {
+      std::vector<Group> groups = {state.back().getRow(cell.row), state.back().getCol(cell.col),
+                                   state.back().getBlock(cell.row, cell.col)};
       for (const auto& group : groups) {
-        bool cellUpdated = solveRulePencilingCellWithGroup(row, col, getCell(row, col), group);
-        if (cellUpdated) {
+        if (solveRulePencilingCellWithGroup(cell, group)) {
           return true;
         }
       }
@@ -244,8 +222,7 @@ namespace sudoku {
       updatedLoop = false;
       for (size_t row = 0; row < ROWS; row++) {
         for (size_t col = 0; col < COLS; col++) {
-          bool cellUpdated = solveRulePencilingCell(row, col, getCell(row, col));
-          if (cellUpdated) {
+          if (solveRulePencilingCell(getCell(row, col))) {
             updated = true;
             updatedLoop = true;
           }
@@ -260,21 +237,20 @@ namespace sudoku {
     return false;
   }
 
-  auto Sudoku::solveRulePointingGroups(const IndexedCellGroup group0, const IndexedCellGroup group1)
-      -> bool {
-    IndexedCellGroup sharedCells;
+  auto Sudoku::solveRulePointingGroups(Group group0, Group group1) -> bool {
+    Group sharedCells;
     std::set<int> sharedValues;
-    for (const auto& g0Cell : group0) {
-      for (const auto& g1Cell : group1) {
+    for (auto& g0Cell : group0) {
+      for (auto& g1Cell : group1) {
         if (g0Cell.row == g1Cell.row && g0Cell.col == g1Cell.col) {
-          sharedCells.push_back(g0Cell);
-          if (g0Cell.cell.size() > 1) {
-            for (auto value : g0Cell.cell) {
+          sharedCells.add(g0Cell);
+          if (g0Cell.candidateCount() > 1) {
+            for (auto value : g0Cell.toVector()) {
               sharedValues.insert(value);
             }
           }
-          if (g1Cell.cell.size() > 1) {
-            for (auto value : g1Cell.cell) {
+          if (g1Cell.candidateCount() > 1) {
+            for (auto value : g1Cell.toVector()) {
               sharedValues.insert(value);
             }
           }
@@ -283,8 +259,8 @@ namespace sudoku {
     }
     spdlog::trace("  Found {} shared cells", sharedCells.size());
 
-    IndexedCellGroup unsharedGroup0Cells;
-    for (const auto& g0Cell : group0) {
+    Group unsharedGroup0Cells;
+    for (auto& g0Cell : group0) {
       bool isShared = false;
       for (const auto& sharedCell : sharedCells) {
         if (g0Cell.row == sharedCell.row && g0Cell.col == sharedCell.col) {
@@ -292,13 +268,13 @@ namespace sudoku {
         }
       }
       if (!isShared) {
-        unsharedGroup0Cells.push_back(g0Cell);
+        unsharedGroup0Cells.add(g0Cell);
       }
     }
     spdlog::trace("  Found {} unshared group0 cells", unsharedGroup0Cells.size());
 
-    IndexedCellGroup unsharedGroup1Cells;
-    for (const auto& g1Cell : group1) {
+    Group unsharedGroup1Cells;
+    for (auto& g1Cell : group1) {
       bool isShared = false;
       for (const auto& sharedCell : sharedCells) {
         if (g1Cell.row == sharedCell.row && g1Cell.col == sharedCell.col) {
@@ -306,7 +282,7 @@ namespace sudoku {
         }
       }
       if (!isShared) {
-        unsharedGroup1Cells.push_back(g1Cell);
+        unsharedGroup1Cells.add(g1Cell);
       }
     }
     spdlog::trace("  Found {} unshared group1 cells", unsharedGroup1Cells.size());
@@ -320,8 +296,7 @@ namespace sudoku {
         spdlog::trace("    {}", sharedValue);
         //  check if in unshared group0 cells
         for (const auto& unsharedGroup0Cell : unsharedGroup0Cells) {
-          if (std::ranges::find(unsharedGroup0Cell.cell, sharedValue)
-              != unsharedGroup0Cell.cell.end()) {
+          if (unsharedGroup0Cell.hasCandidate(sharedValue)) {
             valueFoundOutsideOfSharedGroup0 = true;
             spdlog::trace("    {} found outside of shared cells in group0", sharedValue);
             break;
@@ -329,8 +304,7 @@ namespace sudoku {
         }
         // check if in unshared group1 cells
         for (const auto& unsharedGroup1Cell : unsharedGroup1Cells) {
-          if (std::ranges::find(unsharedGroup1Cell.cell, sharedValue)
-              != unsharedGroup1Cell.cell.end()) {
+          if (unsharedGroup1Cell.hasCandidate(sharedValue)) {
             valueFoundOutsideOfSharedGroup1 = true;
             spdlog::trace("    {} found outside of shared cells in group1", sharedValue);
             break;
@@ -339,23 +313,19 @@ namespace sudoku {
         if (valueFoundOutsideOfSharedGroup0 && !valueFoundOutsideOfSharedGroup1) {
           spdlog::trace("\n{}", toDebugTable());
           spdlog::trace("    {} only in found in unshared cells in group0", sharedValue);
-          for (const auto& unsharedGroup0Cell : unsharedGroup0Cells) {
+          for (auto& unsharedGroup0Cell : unsharedGroup0Cells) {
             spdlog::debug("Pointing: Removing possible value {} from ({},{})", sharedValue,
                           unsharedGroup0Cell.row, unsharedGroup0Cell.col);
-            unsharedGroup0Cell.cell.erase(
-                std::ranges::remove(unsharedGroup0Cell.cell, sharedValue).begin(),
-                unsharedGroup0Cell.cell.end());
+            unsharedGroup0Cell.removeCandidate(sharedValue);
           }
           updated = true;
         } else if (!valueFoundOutsideOfSharedGroup0 && valueFoundOutsideOfSharedGroup1) {
           spdlog::trace("\n{}", toDebugTable());
           spdlog::trace("    {} only in found in unshared cells in group1", sharedValue);
-          for (const auto& unsharedGroup1Cell : unsharedGroup1Cells) {
+          for (auto& unsharedGroup1Cell : unsharedGroup1Cells) {
             spdlog::debug("Pointing: Removing possible value {} from ({},{})", sharedValue,
                           unsharedGroup1Cell.row, unsharedGroup1Cell.col);
-            unsharedGroup1Cell.cell.erase(
-                std::ranges::remove(unsharedGroup1Cell.cell, sharedValue).begin(),
-                unsharedGroup1Cell.cell.end());
+            unsharedGroup1Cell.removeCandidate(sharedValue);
           }
           updated = true;
         } else if (valueFoundOutsideOfSharedGroup0 && valueFoundOutsideOfSharedGroup1) {
@@ -423,14 +393,14 @@ namespace sudoku {
     return result;
   }
 
-  auto Sudoku::solveRuleHiddenPairsGroup(IndexedCellGroup cellGroup) -> bool {
+  auto Sudoku::solveRuleHiddenPairsGroup(Group cellGroup) -> bool {
     spdlog::trace("solveRuleHiddenPairsGroup");
 
     // Get all candidates in group and generate pairs
     std::set<int> candidates;
-    for (const auto& cell : cellGroup) {
-      if (cell.cell.size() > 1) {
-        for (auto candidate : cell.cell) {
+    for (auto& cell : cellGroup) {
+      if (cell.candidateCount() > 1) {
+        for (auto candidate : cell.toVector()) {
           candidates.insert(candidate);
         }
       }
@@ -440,12 +410,12 @@ namespace sudoku {
     for (auto [a, b] : makeCandidatePairs(candidates)) {
       spdlog::trace("  Candidate pair: ({}, {})", a, b);
       bool invalidated = false;
-      IndexedCellGroup candidateCells = {};
-      for (const auto& cell : cellGroup) {
-        bool cellContainsFirstValue = std::ranges::find(cell.cell, a) != cell.cell.end();
-        bool cellContainsSecondValue = std::ranges::find(cell.cell, b) != cell.cell.end();
+      Group candidateCells = {};
+      for (auto& cell : cellGroup) {
+        bool cellContainsFirstValue = cell.hasCandidate(a);
+        bool cellContainsSecondValue = cell.hasCandidate(b);
         if (cellContainsFirstValue && cellContainsSecondValue) {
-          candidateCells.push_back(cell);
+          candidateCells.add(cell);
         } else if (cellContainsFirstValue || cellContainsSecondValue) {
           invalidated = true;
           break;
@@ -457,15 +427,12 @@ namespace sudoku {
       // Check if there are only two candidates
       // and only process if a cell has mroe then 2 candidates
       if (candidateCells.size() == 2
-          && (candidateCells[0].cell.size() > 2 || candidateCells[1].cell.size() > 2)) {
+          && (candidateCells[0].candidateCount() > 2 || candidateCells[1].candidateCount() > 2)) {
         spdlog::debug("Hidden Pairs: Found {} and {} paired in cells ({},{}) and ({},{})", a, b,
                       candidateCells[0].row, candidateCells[0].col, candidateCells[1].row,
                       candidateCells[1].col);
-        for (const auto& candidateCell : candidateCells) {
-          candidateCell.cell.erase(
-              std::remove_if(candidateCell.cell.begin(), candidateCell.cell.end(),
-                             [=](int x) { return x != a && x != b; }),
-              candidateCell.cell.end());
+        for (auto& candidateCell : candidateCells) {
+          candidateCell.keepOnly({a, b});
         }
         spdlog::debug("\n{}", toDebugTable());
         return true;
@@ -496,14 +463,14 @@ namespace sudoku {
     return false;
   }
 
-  auto Sudoku::solveRuleHiddenTuplesGroup(IndexedCellGroup cellGroup) -> bool {
+  auto Sudoku::solveRuleHiddenTuplesGroup(Group cellGroup) -> bool {
     spdlog::trace("solveRuleHiddenTuplesGroup");
 
     // Get all candidates in group and generate tuples
     std::set<int> candidates;
     for (const auto& cell : cellGroup) {
-      if (cell.cell.size() > 1) {
-        for (auto candidate : cell.cell) {
+      if (cell.candidateCount() > 1) {
+        for (auto candidate : cell.toVector()) {
           candidates.insert(candidate);
         }
       }
@@ -513,15 +480,15 @@ namespace sudoku {
     for (auto [a, b, c] : makeCandidateTuples(candidates)) {
       spdlog::trace("  Candidate tuple: ({}, {}, {})", a, b, c);
       bool invalidated = false;
-      IndexedCellGroup candidateCells = {};
-      for (const auto& cell : cellGroup) {
-        bool cellContainsFirstValue = std::ranges::find(cell.cell, a) != cell.cell.end();
-        bool cellContainsSecondValue = std::ranges::find(cell.cell, b) != cell.cell.end();
-        bool cellContainsThirdValue = std::ranges::find(cell.cell, c) != cell.cell.end();
+      Group candidateCells = {};
+      for (auto& cell : cellGroup) {
+        bool cellContainsFirstValue = cell.hasCandidate(a);
+        bool cellContainsSecondValue = cell.hasCandidate(b);
+        bool cellContainsThirdValue = cell.hasCandidate(c);
         if ((cellContainsFirstValue && cellContainsSecondValue)
             || (cellContainsFirstValue && cellContainsThirdValue)
             || (cellContainsSecondValue && cellContainsThirdValue)) {
-          candidateCells.push_back(cell);
+          candidateCells.add(cell);
         } else if (cellContainsFirstValue || cellContainsSecondValue || cellContainsThirdValue) {
           invalidated = true;
           break;
@@ -533,17 +500,14 @@ namespace sudoku {
       // Check if there are only three candidates
       // and only process if a cell has more then 3 candidates
       if (candidateCells.size() == 3
-          && (candidateCells[0].cell.size() > 3 || candidateCells[1].cell.size() > 3
-              || candidateCells[2].cell.size() > 3)) {
+          && (candidateCells[0].candidateCount() > 3 || candidateCells[1].candidateCount() > 3
+              || candidateCells[2].candidateCount() > 3)) {
         spdlog::debug(
             "Hidden Tuples: Found {}, {}, and {} paired in cells ({},{}), ({},{}) and ({},{})", a,
             b, c, candidateCells[0].row, candidateCells[0].col, candidateCells[1].row,
             candidateCells[1].col, candidateCells[2].row, candidateCells[2].col);
-        for (const auto& candidateCell : candidateCells) {
-          candidateCell.cell.erase(
-              std::remove_if(candidateCell.cell.begin(), candidateCell.cell.end(),
-                             [=](int x) { return x != a && x != b && x != c; }),
-              candidateCell.cell.end());
+        for (auto& candidateCell : candidateCells) {
+          candidateCell.keepOnly({a, b, c});
         }
         spdlog::debug("\n{}", toDebugTable());
         return true;
@@ -575,28 +539,27 @@ namespace sudoku {
   }
 
   auto Sudoku::solveRuleXWingCells(size_t row0, size_t row1, size_t col0, size_t col1) -> bool {
-    CellGroup candidateCells
-        = {getCell(row0, col0), getCell(row0, col1), getCell(row1, col0), getCell(row1, col1)};
+    Group candidateCells;
+    candidateCells.add(state.back().getCell(row0, col0));
+    candidateCells.add(state.back().getCell(row0, col1));
+    candidateCells.add(state.back().getCell(row1, col0));
+    candidateCells.add(state.back().getCell(row1, col1));
     // Get all candidates in group
     std::set<int> candidates;
     for (const auto& cell : candidateCells) {
-      if (cell.size() == 1) {
+      if (cell.candidateCount() == 1) {
         return false;
       }
-      for (auto candidate : cell) {
+      for (auto candidate : cell.toVector()) {
         candidates.insert(candidate);
       }
     }
 
     for (auto candidate : candidates) {
-      if (std::find(candidateCells[0].begin(), candidateCells[0].end(), candidate)
-              != candidateCells[0].end()
-          && std::find(candidateCells[1].begin(), candidateCells[1].end(), candidate)
-                 != candidateCells[1].end()
-          && std::find(candidateCells[2].begin(), candidateCells[2].end(), candidate)
-                 != candidateCells[2].end()
-          && std::find(candidateCells[3].begin(), candidateCells[3].end(), candidate)
-                 != candidateCells[3].end()) {
+      if (candidateCells[0].hasCandidate(candidate)
+          && candidateCells[1].hasCandidate(   candidate)
+          && candidateCells[2].hasCandidate(   candidate)
+          && candidateCells[3].hasCandidate(   candidate)) {
         spdlog::trace("{} shared amoungst ({},{}) ({},{}), ({},{}), ({},{})", candidate, row0, col0,
                       row0, col1, row1, col0, row1, col1);
         bool unique;
@@ -608,7 +571,7 @@ namespace sudoku {
         // Check that other cells in row dont contain candidate
         for (auto row : {getRow(row0), getRow(row1)}) {
           for (auto cell : row) {
-            if (std::find(cell.cell.begin(), cell.cell.end(), candidate) != cell.cell.end()
+            if (cell.hasCandidate(candidate)
                 && cell.col != col0 && cell.col != col1) {
               unique = false;
             }
@@ -617,7 +580,7 @@ namespace sudoku {
         // Check that other cells in rows contain candidate
         for (auto col : {getCol(col0), getCol(col1)}) {
           for (auto cell : col) {
-            if (std::find(cell.cell.begin(), cell.cell.end(), candidate) != cell.cell.end()
+            if (cell.hasCandidate(candidate)
                 && cell.row != row0 && cell.row != row1) {
               others = true;
             }
@@ -629,11 +592,9 @@ namespace sudoku {
                         row0, col0, row0, col1, row1, col0, row1, col1);
           for (auto col : {getCol(col0), getCol(col1)}) {
             for (auto cell : col) {
-              if (std::find(cell.cell.begin(), cell.cell.end(), candidate) != cell.cell.end()
+              if (cell.hasCandidate(candidate)
                   && cell.row != row0 && cell.row != row1) {
-                cell.cell.erase(std::remove_if(cell.cell.begin(), cell.cell.end(),
-                                               [=](int x) { return x == candidate; }),
-                                cell.cell.end());
+                cell.removeCandidate(candidate);
               }
             }
           }
@@ -647,7 +608,7 @@ namespace sudoku {
         // Check that other cells in column dont contain candidate
         for (auto col : {getCol(col0), getCol(col1)}) {
           for (auto cell : col) {
-            if (std::find(cell.cell.begin(), cell.cell.end(), candidate) != cell.cell.end()
+            if (cell.hasCandidate(candidate)
                 && cell.row != row0 && cell.row != row1) {
               unique = false;
             }
@@ -655,8 +616,8 @@ namespace sudoku {
         }
         // Check that other cells in row dont contain candidate
         for (auto row : {getRow(row0), getRow(row1)}) {
-          for (auto cell : row) {
-            if (std::find(cell.cell.begin(), cell.cell.end(), candidate) != cell.cell.end()
+          for (auto& cell : row) {
+            if (cell.hasCandidate(candidate)
                 && cell.col != col0 && cell.col != col1) {
               others = true;
             }
@@ -667,12 +628,10 @@ namespace sudoku {
           spdlog::debug("{} is unique across cols for ({},{}) ({},{}), ({},{}), ({},{})", candidate,
                         row0, col0, row0, col1, row1, col0, row1, col1);
           for (auto row : {getRow(row0), getRow(row1)}) {
-            for (auto cell : row) {
-              if (std::find(cell.cell.begin(), cell.cell.end(), candidate) != cell.cell.end()
+            for (auto& cell : row) {
+              if (cell.hasCandidate(candidate)
                   && cell.col != col0 && cell.col != col1) {
-                cell.cell.erase(std::remove_if(cell.cell.begin(), cell.cell.end(),
-                                               [=](int x) { return x == candidate; }),
-                                cell.cell.end());
+                cell.removeCandidate(candidate);
               }
             }
           }

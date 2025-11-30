@@ -3,6 +3,7 @@
 #include <sudoku/sudoku.h>
 #include <sudoku/version.h>
 
+#include <print>
 #include <string>
 
 TEST_CASE("Simple") {
